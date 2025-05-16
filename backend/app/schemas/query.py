@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
 class QueryBase(BaseModel):
-    raw_query: str
-    answer_markdown: str
+    raw_query: str = Field(..., min_length=1)
+    answer_markdown: str = Field(..., min_length=1)
 
 class QueryCreate(QueryBase):
     pass
