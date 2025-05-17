@@ -1,0 +1,10 @@
+{
+  "name": "curiosity-extension",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "postbuild": "cp ../extension/manifest.json dist/manifest.json && cp ../extension/background.js dist/background.js && cp ../extension/content-script.js dist/content-script.js && cp -R ../extension/icons dist/icons || true"
+  },
+  "devDependencies": {}
+} 
