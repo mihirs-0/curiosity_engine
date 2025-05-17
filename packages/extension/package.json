@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "postbuild": "cp ../extension/manifest.json dist/manifest.json && cp ../extension/background.js dist/background.js && cp ../extension/content-script.js dist/content-script.js && cp -R ../extension/icons dist/icons || true"
+    "postbuild": "mv dist/src/sidepanel.html dist/sidepanel.html && rmdir dist/src || true && cp manifest.json dist/manifest.json && cp background.js dist/background.js && cp content-script.js dist/content-script.js && cp -R icons dist/icons || true"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",
