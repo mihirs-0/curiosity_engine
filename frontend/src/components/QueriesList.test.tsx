@@ -9,7 +9,6 @@ import { supabaseMock } from '../lib/supabase'
 // }))
 
 // Skip all tests in this file for now
-// eslint-disable-next-line vitest/no-disabled-tests
 describe.skip('QueriesList', () => {
   it('renders loading state initially', () => {
     render(<QueriesList />)
