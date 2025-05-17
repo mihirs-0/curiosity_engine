@@ -1,29 +1,22 @@
 /// <reference types="vitest" />
 /// <reference types="vite/client" />
 
-import { defineConfig, mergeConfig } from 'vite'
-import { defineConfig as defineVitestConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react-swc'
+import path from 'path'
 
 declare module '@vitejs/plugin-react-swc'
 
-const viteConfig = defineConfig({
-  plugins: [react()]
-})
-
-const vitestConfig = defineVitestConfig({
+export default defineConfig({
+  plugins: [react()],
   test: {
-    globals: true,
     environment: 'jsdom',
-    setupFiles: './src/test/setup.ts',
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'src/test/setup.ts',
-      ],
+    setupFiles: ['./src/test/setup.ts'],
+    globals: true,
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
   },
-})
-
-export default mergeConfig(viteConfig, vitestConfig) 
+}) 
