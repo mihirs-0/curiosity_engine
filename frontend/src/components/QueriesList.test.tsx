@@ -35,7 +35,7 @@ describe('QueriesList', () => {
       select: () => ({
         order: () => Promise.resolve({ data: mockQueries, error: null })
       })
-    } as any)
+    } as unknown as ReturnType<typeof supabaseMock.from>)
 
     render(<QueriesList />)
 
