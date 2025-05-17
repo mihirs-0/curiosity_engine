@@ -28,11 +28,13 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'yarn'
         
     - name: Install dependencies
-      run: yarn install --frozen-lockfile
+      run: |
+        rm -f package-lock.json  # Remove package-lock.json to avoid conflicts
+        yarn install --frozen-lockfile
         
     - name: Run tests
       run: yarn test --run 
