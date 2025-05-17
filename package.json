@@ -1,18 +1,19 @@
 {
   "name": "curiosity-engine",
   "private": true,
+  "packageManager": "pnpm@10.11.0",
   "workspaces": [
-    "frontend",
-    "backend"
+    "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspaces run dev",
-    "build": "yarn workspaces run build",
-    "lint": "yarn workspaces run lint",
-    "test": "yarn workspaces run test"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "eslint": "^8.56.0",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "turbo": "latest"
   }
 }

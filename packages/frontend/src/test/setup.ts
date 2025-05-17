@@ -13,7 +13,7 @@ afterEach(() => {
 
 // Mock Supabase client
 const supabaseMock = {
-  from: vi.fn((table: string) => ({
+  from: vi.fn(() => ({
     select: vi.fn(() => ({
       order: vi.fn(() => Promise.resolve({ data: [], error: null }))
     })),
