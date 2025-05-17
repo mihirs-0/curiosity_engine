@@ -3,6 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+import os
+from unittest.mock import patch, AsyncMock
 
 from app.main import app
 from app.db.database import Base, get_db
@@ -94,4 +96,68 @@ def test_query_persistence():
     }
     response2 = client.post("/queries", json=query2)
     assert response2.status_code == 200
-    assert response2.json()["id"] == 2  # ID should increment 
+    assert response2.json()["id"] == 2  # ID should increment
+
+@pytest.mark.asyncio
+async def test_sonar_api_success():
+    # Mock successful Sonar API response
+    mock_sonar_response = {
+        "points_of_interest": ["Place 1", "Place 2"],
+        "travel_times": {"Place 1": "10 mins", "Place 2": "15 mins"},
+        "local_tips": ["Tip 1", "Tip 2"]
+    }
+    
+    with patch('app.main.call_sonar_api', new_callable=AsyncMock) as mock_sonar:
+        mock_sonar.return_value = mock_sonar_response
+        
+        query_data = {
+            "raw_query": "Best cafes in Tokyo?",
+            "answer_markdown": "# Top Tokyo Cafes\n\n1. Cafe A\n2. Cafe B"
+        }
+        
+        response = client.post("/queries", json=query_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["sonar_status"] == "completed"
+        assert data["sonar_data"] == mock_sonar_response
+
+@pytest.mark.asyncio
+async def test_sonar_api_error():
+    # Mock Sonar API error
+    mock_error = {"error": "API request failed"}
+    
+    with patch('app.main.call_sonar_api', new_callable=AsyncMock) as mock_sonar:
+        mock_sonar.return_value = mock_error
+        
+        query_data = {
+            "raw_query": "Best cafes in Tokyo?",
+            "answer_markdown": "# Top Tokyo Cafes\n\n1. Cafe A\n2. Cafe B"
+        }
+        
+        response = client.post("/queries", json=query_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["sonar_status"] == "error"
+        assert data["sonar_data"] == mock_error
+
+@pytest.mark.asyncio
+async def test_sonar_api_timeout():
+    # Mock Sonar API timeout
+    mock_timeout = {"error": "Sonar API request timed out"}
+    
+    with patch('app.main.call_sonar_api', new_callable=AsyncMock) as mock_sonar:
+        mock_sonar.return_value = mock_timeout
+        
+        query_data = {
+            "raw_query": "Best cafes in Tokyo?",
+            "answer_markdown": "# Top Tokyo Cafes\n\n1. Cafe A\n2. Cafe B"
+        }
+        
+        response = client.post("/queries", json=query_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["sonar_status"] == "error"
+        assert data["sonar_data"] == mock_timeout 

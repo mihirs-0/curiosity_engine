@@ -1,0 +1,38 @@
+name: Chrome Extension Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'extension/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'extension/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        cd extension
+        npm install
+        
+    - name: Lint extension
+      run: |
+        cd extension
+        npm run lint
+        
+    - name: Build extension
+      run: |
+        cd extension
+        npm run build 
