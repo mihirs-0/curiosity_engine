@@ -18,13 +18,13 @@ describe('QueriesList', () => {
     const mockQueries = [
       {
         id: 1,
-        user_input: 'Test query 1',
+        raw_query: 'Test query 1',
         answer_markdown: 'Test answer 1',
         created_at: '2024-02-20T00:00:00Z'
       },
       {
         id: 2,
-        user_input: 'Test query 2',
+        raw_query: 'Test query 2',
         answer_markdown: 'Test answer 2',
         created_at: '2024-02-20T00:00:00Z'
       }
@@ -35,7 +35,7 @@ describe('QueriesList', () => {
       select: () => ({
         order: () => Promise.resolve({ data: mockQueries, error: null })
       })
-    } as unknown as ReturnType<typeof supabaseMock.from>)
+    } as any)
 
     render(<QueriesList />)
 

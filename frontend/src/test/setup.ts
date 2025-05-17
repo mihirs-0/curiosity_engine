@@ -1,8 +1,7 @@
 import '@testing-library/jest-dom'
-import { expect, afterEach } from 'vitest'
+import { expect, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import * as matchers from '@testing-library/jest-dom/matchers'
-import { vi } from 'vitest'
 
 // Extend Vitest's expect with testing-library matchers
 expect.extend(matchers)
@@ -12,18 +11,20 @@ afterEach(() => {
   cleanup()
 })
 
-// Mock environment variables
+// Mock Supabase client
+const supabaseMock = {
+  from: vi.fn((table: string) => ({
+    select: vi.fn(() => ({
+      order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+    })),
+    insert: vi.fn((data: Record<string, unknown>) => ({
+      data: [data],
+      error: null
+    }))
+  }))
+}
+
+// Mock the supabase module
 vi.mock('../lib/supabase', () => ({
-  supabase: {
-    from: (_table: string) => ({
-      select: () => ({
-        data: [],
-        error: null
-      }),
-      insert: (data: Record<string, unknown>) => ({
-        data: [data],
-        error: null
-      })
-    })
-  }
+  supabase: supabaseMock
 })) 
