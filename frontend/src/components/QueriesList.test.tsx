@@ -5,7 +5,7 @@ import QueriesList from './QueriesList'
 // Mock the Supabase client
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    from: (table: string) => ({
+    from: (_table: string) => ({
       select: () => ({
         data: [
           {

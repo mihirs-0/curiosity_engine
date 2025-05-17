@@ -15,12 +15,12 @@ afterEach(() => {
 // Mock environment variables
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    from: (table: string) => ({
+    from: (_table: string) => ({
       select: () => ({
         data: [],
         error: null
       }),
-      insert: (data: any) => ({
+      insert: (data: Record<string, unknown>) => ({
         data: [data],
         error: null
       })
