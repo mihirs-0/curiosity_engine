@@ -36,5 +36,8 @@ jobs:
         rm -f package-lock.json  # Remove package-lock.json to avoid conflicts
         yarn install --frozen-lockfile
         
+    - name: Run linting
+      run: yarn lint --max-warnings 0
+        
     - name: Run tests
       run: yarn test --run 
