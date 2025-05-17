@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 # For development, we'll use SQLite. In production, this should be configured via environment variables
 SQLALCHEMY_DATABASE_URL = "sqlite:///./curiosity.db"
