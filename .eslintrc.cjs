@@ -4,12 +4,15 @@ module.exports = {
     node: true,
     browser: true,
     es2022: true,
+    jest: true,
   },
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
+    'plugin:jsx-a11y/recommended',
+    'plugin:jest/recommended',
     'prettier',
   ],
   parser: '@typescript-eslint/parser',
@@ -20,7 +23,7 @@ module.exports = {
       jsx: true,
     },
   },
-  plugins: ['@typescript-eslint', 'react', 'react-hooks'],
+  plugins: ['@typescript-eslint', 'react', 'react-hooks', 'jsx-a11y', 'jest'],
   settings: {
     react: {
       version: 'detect',
@@ -29,6 +32,7 @@ module.exports = {
   rules: {
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
+    'prettier/prettier': 'error',
   },
   overrides: [
     {
@@ -41,6 +45,12 @@ module.exports = {
       files: ['frontend/**/*'],
       env: {
         browser: true,
+      },
+    },
+    {
+      files: ['**/*.test.ts', '**/*.test.tsx'],
+      env: {
+        jest: true,
       },
     },
   ],
