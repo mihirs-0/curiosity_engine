@@ -9,11 +9,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+interface Query {
+  id: string
+  raw_query: string
+  answer_markdown: string
+  created_at: string
+}
+
 // Mock Supabase client for development and testing
 export const supabaseMock = {
   from: (_table: string) => ({
     select: () => ({
-      data: [],
+      data: [] as Query[],
       error: null
     }),
     insert: (data: Record<string, unknown>) => ({
