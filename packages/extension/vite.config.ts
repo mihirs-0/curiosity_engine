@@ -4,4 +4,11 @@ import { crx } from 'vite-plugin-chrome-extension';
 
 export default defineConfig({
   plugins: [preact(), crx({ manifest: './manifest.json' })],
+  build: {
+    rollupOptions: {
+      input: {
+        sidepanel: 'src/sidepanel.html'
+      }
+    }
+  }
 }); 
