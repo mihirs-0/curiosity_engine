@@ -18,7 +18,11 @@ jobs:
         working-directory: ./backend
 
     env:
+      # Required for Sonar API integration
       PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      # Development database (SQLite)
+      SQLALCHEMY_DATABASE_URL: "sqlite:///./test.db"
+      # Python path for imports
       PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
