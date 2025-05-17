@@ -4,37 +4,37 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'extension/**'
+      - 'packages/extension/**'
   pull_request:
     branches: [ main ]
     paths:
-      - 'extension/**'
+      - 'packages/extension/**'
 
 jobs:
   test:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         
     - name: Install dependencies
       run: |
-        cd extension
+        cd packages/extension
         npm install
         
     - name: Lint extension
       run: |
-        cd extension
+        cd packages/extension
         npm run lint || true  # Don't fail if linting is not set up
         
     - name: Verify extension files
       run: |
-        cd extension
+        cd packages/extension
         test -f manifest.json
         test -f background.js
         test -f content-script.js
