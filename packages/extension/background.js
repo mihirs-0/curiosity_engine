@@ -9,6 +9,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Handle the clipped content
     console.log('Received clipped content:', request.data);
     
+    // Store the latest clipped query
+    chrome.storage.local.set({ latestClippedQuery: request.data }, () => {
+      // Notify side panel (if open)
+      chrome.runtime.sendMessage({ type: 'LATEST_CLIPPED_QUERY', data: request.data });
+    });
+    
     // Send to backend
     fetch('http://localhost:8004/queries', {
       method: 'POST',

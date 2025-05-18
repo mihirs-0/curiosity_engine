@@ -1,6 +1,3 @@
-// This file is now a stub. The main UI is in sidepanel.tsx.
-console.log('Side panel stub loaded.');
-
 import { h, render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 
