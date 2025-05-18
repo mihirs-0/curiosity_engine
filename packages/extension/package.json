@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "postbuild": "rm -rf dist && mkdir dist && cp manifest.json dist/ && cp background.js dist/ && cp content-script.js dist/ && cp popup.html dist/ && cp popup.js dist/ && cp sidepanel.html dist/ && cp -R icons dist/icons || true"
+    "postbuild": "rm -rf dist && mkdir dist && cp manifest.json dist/ && cp background.js dist/ && cp -r assets dist/ && cp popup.html dist/ && cp popup.js dist/ && cp sidepanel.html dist/"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",
+    "@types/chrome": "^0.0.254",
     "preact": "^10.26.6",
+    "typescript": "^5.0.0",
     "vite": "^6.3.5"
   }
 }

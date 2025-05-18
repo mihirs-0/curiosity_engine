@@ -1,29 +1,49 @@
-import { h, render } from 'preact';
+/// <reference types="chrome"/>
+import { h, render, VNode } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import type { JSX } from 'preact';
+
+// Declare Chrome types
+declare global {
+  interface Window {
+    chrome: {
+      storage: {
+        local: {
+          get: (keys: string[], callback: (result: any) => void) => void;
+        };
+      };
+      runtime: {
+        onMessage: {
+          addListener: (callback: (message: any) => void) => void;
+          removeListener: (callback: (message: any) => void) => void;
+        };
+      };
+    };
+  }
+}
 
 interface ClippedQuery {
   raw_query: string;
   answer_markdown: string;
 }
 
-function SidePanel() {
+function SidePanel(): VNode {
   const [latestQuery, setLatestQuery] = useState<ClippedQuery | null>(null);
-
   useEffect(() => {
-    chrome.storage.local.get(['latestClippedQuery'], (result) => {
+    window.chrome.storage.local.get(['latestClippedQuery'], (result) => {
       if (result.latestClippedQuery) {
         setLatestQuery(result.latestClippedQuery);
       }
     });
 
     // Listen for updates from background/content script
-    const listener = (msg: any) => {
+    const listener = (msg: { type: string; data: ClippedQuery }) => {
       if (msg.type === 'LATEST_CLIPPED_QUERY') {
         setLatestQuery(msg.data);
       }
     };
-    chrome.runtime.onMessage.addListener(listener);
-    return () => chrome.runtime.onMessage.removeListener(listener);
+    window.chrome.runtime.onMessage.addListener(listener);
+    return () => window.chrome.runtime.onMessage.removeListener(listener);
   }, []);
 
   return (

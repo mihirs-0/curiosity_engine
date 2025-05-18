@@ -1,47 +1,105 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const statusEl = document.getElementById('status');
+document.addEventListener('DOMContentLoaded', function() {
   const clipButton = document.getElementById('clipButton');
+  const openSidepanelButton = document.getElementById('openSidepanelButton');
+  const statusText = document.getElementById('status');
+  const statusIcon = document.getElementById('statusIcon');
 
-  // Check if we're on a Perplexity page
-  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (!tab.url.includes('perplexity.ai')) {
-      statusEl.textContent = 'Please visit a Perplexity page to use this extension';
-      clipButton.disabled = true;
-      return;
+  function updateStatus(message, type = 'ready') {
+    statusText.textContent = message;
+    statusIcon.className = `status-icon ${type}`;
+  }
+
+  function setLoading(isLoading) {
+    clipButton.disabled = isLoading;
+    if (isLoading) {
+      clipButton.innerHTML = `
+        <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle>
+        </svg>
+        Clipping...
+      `;
+    } else {
+      clipButton.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+        </svg>
+        Clip Current Page
+      `;
     }
+  }
 
-    // Enable the clip button
-    clipButton.addEventListener('click', async () => {
-      try {
-        statusEl.textContent = 'Clipping content...';
-        clipButton.disabled = true;
+  clipButton.addEventListener('click', async () => {
+    try {
+      setLoading(true);
+      updateStatus('Clipping content...', 'ready');
 
-        // Execute content script
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content-script.js']
-        });
+      // Send message to content script
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'clipContent' });
 
-        // Wait a bit for the content script to complete
-        setTimeout(() => {
-          statusEl.textContent = 'Content clipped successfully!';
-          clipButton.disabled = false;
-        }, 1000);
-      } catch (err) {
-        console.error('Error:', err);
-        statusEl.textContent = `Error: ${err.message}`;
-        clipButton.disabled = false;
+      if (!response || !response.success) {
+        throw new Error(response?.error || 'Failed to clip content');
       }
-    });
+
+      // Validate the response data
+      if (!response.data?.raw_query || !response.data?.answer_markdown) {
+        throw new Error('Invalid content format');
+      }
+
+      // Send to backend API
+      const apiResponse = await fetch('http://localhost:8000/queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(response.data)
+      });
+
+      if (!apiResponse.ok) {
+        const error = await apiResponse.json();
+        throw new Error(error.detail || 'API request failed');
+      }
+
+      const result = await apiResponse.json();
+      
+      // Check if the query was stored and processed successfully
+      if (result.id && result.sonar_status) {
+        updateStatus('Content clipped successfully!', 'ready');
+        // Optionally show different status based on sonar_status
+        if (result.sonar_status === 'error') {
+          console.warn('Sonar processing failed:', result.sonar_data?.error);
+        }
+      } else {
+        throw new Error('Invalid API response format');
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      updateStatus(error.message || 'Failed to clip content', 'error');
+    } finally {
+      setLoading(false);
+    }
   });
 
-  document.getElementById('openSidepanelButton').addEventListener('click', async () => {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      await chrome.sidePanel.open({ windowId: tab.windowId });
-    } catch (err) {
-      console.error('Error opening sidepanel:', err);
+  openSidepanelButton.addEventListener('click', async () => {
+    if (chrome.sidePanel) {
+      await chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+    } else {
+      // Fallback for browsers that don't support side panel
+      chrome.windows.create({
+        url: 'sidepanel.html',
+        type: 'popup',
+        width: 400,
+        height: 600
+      });
+    }
+  });
+
+  // Check if we're on a valid page
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const currentUrl = tabs[0].url;
+    if (!currentUrl.includes('perplexity.ai')) {
+      clipButton.disabled = true;
+      updateStatus('Please navigate to Perplexity AI', 'error');
     }
   });
 }); 

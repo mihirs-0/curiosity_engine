@@ -11,6 +11,7 @@
   ],
   "host_permissions": [
     "https://perplexity.ai/*",
+    "https://www.perplexity.ai/*",
     "http://localhost:8000/*"
   ],
   "action": {
@@ -21,8 +22,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://perplexity.ai/*"],
-      "js": ["content-script.js"]
+      "matches": [
+        "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*"
+      ],
+      "js": ["assets/content.js"],
+      "run_at": "document_idle"
     }
   ],
   "background": {

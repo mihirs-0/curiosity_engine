@@ -1,8 +1,9 @@
 // Function to extract content from the page
-function extractContent(targetNode) {
-  // The targetNode is expected to be the element matching '[data-testid="result-text"]'
-  // or a relevant parent if the selector needs to be more specific.
-  const answerEl = targetNode.querySelector('[data-testid="result-text"]') || targetNode; // Adjust if targetNode itself is the result-text
+function extractContent() {
+  const answerEl = document.querySelector('[data-testid="result-text"]');
+  if (!answerEl) {
+    throw new Error('No answer content found on page');
+  }
 
   let raw_query = document.querySelector('textarea[placeholder*="Ask anything"]')?.value;
 
@@ -13,11 +14,13 @@ function extractContent(targetNode) {
     }
   }
 
-  const answer_markdown = answerEl?.innerText;
+  if (!raw_query) {
+    throw new Error('No query found on page');
+  }
 
-  if (!raw_query || !answer_markdown) {
-    // console.warn('Could not find query or answer content with the new selector.');
-    return null; // Return null instead of throwing an error immediately
+  const answer_markdown = answerEl.innerText;
+  if (!answer_markdown) {
+    throw new Error('No answer content found');
   }
 
   return { raw_query, answer_markdown };
@@ -40,24 +43,99 @@ async function sendContent(data) {
   });
 }
 
-function showNotification(message, isSuccess) {
+// Function to show notifications
+function showNotification(message, isSuccess = true) {
+  // Remove any existing notifications
+  const existingNotification = document.querySelector('.curiosity-notification');
+  if (existingNotification) {
+    existingNotification.remove();
+  }
+
   const notification = document.createElement('div');
+  notification.className = 'curiosity-notification';
   notification.style.cssText = `
     position: fixed;
     top: 20px;
     right: 20px;
-    background: ${isSuccess ? '#4CAF50' : '#f44336'};
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: ${isSuccess ? '#10b981' : '#ef4444'};
     color: white;
-    padding: 15px;
-    border-radius: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
     z-index: 10000;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    font-family: sans-serif;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
   `;
-  notification.textContent = message;
+
+  // Add icon based on status
+  const icon = document.createElement('span');
+  icon.innerHTML = isSuccess 
+    ? '✓'
+    : '✕';
+  icon.style.cssText = `
+    font-size: 16px;
+    font-weight: bold;
+  `;
+
+  notification.appendChild(icon);
+  notification.appendChild(document.createTextNode(message));
   document.body.appendChild(notification);
-  setTimeout(() => notification.remove(), 3000);
+
+  // Animate in
+  setTimeout(() => {
+    notification.style.opacity = '1';
+    notification.style.transform = 'translateY(0)';
+  }, 10);
+
+  // Remove after delay
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateY(-10px)';
+    setTimeout(() => notification.remove(), 200);
+  }, 3000);
 }
+
+// Listen for messages from the popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'clipContent') {
+    try {
+      const content = extractContent();
+      sendResponse({ success: true, data: content });
+      showNotification('Content clipped successfully!');
+    } catch (error) {
+      console.error('Error extracting content:', error);
+      sendResponse({ success: false, error: error.message });
+      showNotification(error.message, false);
+    }
+  }
+  return true; // Keep the message channel open for async response
+});
+
+// Add styles for notifications
+const style = document.createElement('style');
+style.textContent = `
+  .curiosity-notification {
+    animation: slideIn 0.2s ease-out;
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+document.head.appendChild(style);
 
 async function processNode(node) {
   console.log("Processing node:", node);
@@ -72,7 +150,7 @@ async function processNode(node) {
 
   if (targetElement) {
     console.log("Perplexity answer element found:", targetElement);
-    const content = extractContent(targetElement);
+    const content = extractContent();
     console.log("Extracted content:", content);
     if (content) {
       try {
