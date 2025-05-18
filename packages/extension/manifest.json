@@ -26,8 +26,13 @@
     }
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
+  "web_accessible_resources": [{
+    "resources": ["sidepanel.html"],
+    "matches": ["<all_urls>"]
+  }],
   "browser_specific_settings": {
     "gecko": {
       "id": "your-extension-id@example.com",

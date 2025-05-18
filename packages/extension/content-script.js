@@ -60,22 +60,24 @@ function showNotification(message, isSuccess) {
 }
 
 async function processNode(node) {
-  // We are interested in nodes that contain the Perplexity answer.
-  // The suggestion is '[data-testid="result-text"]'.
-  // We'll check if the added node itself is or contains this element.
+  console.log("Processing node:", node);
   let targetElement = null;
   if (node.matches && node.matches('[data-testid="result-text"]')) {
     targetElement = node;
+    console.log("Found direct match for result-text");
   } else if (node.querySelector) {
     targetElement = node.querySelector('[data-testid="result-text"]');
+    console.log("Found result-text via querySelector:", targetElement);
   }
 
   if (targetElement) {
     console.log("Perplexity answer element found:", targetElement);
     const content = extractContent(targetElement);
+    console.log("Extracted content:", content);
     if (content) {
       try {
         const result = await sendContent(content);
+        console.log("Send content result:", result);
         if (result && result.success) {
           showNotification('✅ Successfully clipped content!', true);
         } else {
@@ -86,7 +88,7 @@ async function processNode(node) {
         showNotification(`❌ Error: ${err.message}`, false);
       }
     } else {
-      // console.log("Content not extracted from node:", targetElement);
+      console.log("Content not extracted from node:", targetElement);
     }
   }
 }

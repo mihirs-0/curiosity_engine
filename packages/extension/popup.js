@@ -35,4 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  document.getElementById('openSidepanelButton').addEventListener('click', async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+    } catch (err) {
+      console.error('Error opening sidepanel:', err);
+    }
+  });
 }); 
