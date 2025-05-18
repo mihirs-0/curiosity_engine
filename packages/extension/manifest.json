@@ -1,17 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Curiosity Engine Clipper",
-  "version": "1.0",
-  "description": "Clip travel answers from Perplexity and send to Curiosity Engine backend",
+  "name": "Curiosity Engine",
+  "version": "1.0.0",
+  "description": "Enhance your AI chat experience with powerful content clipping and analysis",
   "permissions": [
-    "storage",
     "activeTab",
     "scripting",
-    "tabs",
-    "sidePanel"
+    "sidePanel",
+    "storage"
   ],
   "host_permissions": [
-    "*://*.perplexity.ai/*"
+    "https://perplexity.ai/*",
+    "http://localhost:8000/*"
   ],
   "action": {
     "default_popup": "popup.html"
@@ -21,7 +21,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.perplexity.ai/*"],
+      "matches": ["https://perplexity.ai/*"],
       "js": ["content-script.js"]
     }
   ],
