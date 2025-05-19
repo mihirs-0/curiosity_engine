@@ -1,4 +1,8 @@
 // Content script for Perplexity AI
+
+console.log("[CuriosityEngine ✅] Content script loaded");
+window.__CE_PING__ = "hi from curiosity engine";
+
 console.log('Content script loaded');
 // Cache DOM selectors
 var selectors = {

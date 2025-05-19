@@ -6,24 +6,17 @@ export default defineConfig({
   plugins: [preact()],
   build: {
     rollupOptions: {
+      // The keys here become your filenames:
       input: {
-        sidepanel: 'src/sidepanel/index.html',
-        popup: 'src/popup/index.html',
-        content: 'src/content-script.ts',
-        background: 'src/background.ts'
+        popup:      resolve(__dirname, 'src/popup/index.html'),       // → dist/popup.html
+        sidepanel:  resolve(__dirname, 'src/sidepanel/index.html'),   // → dist/sidepanel.html
+        'content-script': resolve(__dirname, 'src/content-script.ts'),// → dist/content-script.js
+        background: resolve(__dirname, 'src/background.ts')           // → dist/background.js
       },
       output: {
-        entryFileNames: '[name].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: (assetInfo) => {
-          if (!assetInfo.name) return 'assets/[name]-[hash][extname]';
-          const info = assetInfo.name.split('.');
-          const ext = info[info.length - 1];
-          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-            return `assets/[name][extname]`;
-          }
-          return 'assets/[name]-[hash][extname]';
-        }
+        entryFileNames: '[name].js',             // popup.js, sidepanel.js, content-script.js, background.js
+        chunkFileNames: 'chunks/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]'
       }
     },
     outDir: 'dist',
@@ -32,4 +25,4 @@ export default defineConfig({
     assetsDir: 'assets'
   },
   publicDir: 'public'
-}); 
+});
