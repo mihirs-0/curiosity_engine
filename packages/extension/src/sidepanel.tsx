@@ -1,24 +1,12 @@
 /// <reference types="chrome"/>
-import { h, render, VNode } from 'preact';
+import { h, render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { JSX } from 'preact';
 
 // Declare Chrome types
 declare global {
   interface Window {
-    chrome: {
-      storage: {
-        local: {
-          get: (keys: string[], callback: (result: any) => void) => void;
-        };
-      };
-      runtime: {
-        onMessage: {
-          addListener: (callback: (message: any) => void) => void;
-          removeListener: (callback: (message: any) => void) => void;
-        };
-      };
-    };
+    chrome: typeof chrome;
   }
 }
 
@@ -27,7 +15,7 @@ interface ClippedQuery {
   answer_markdown: string;
 }
 
-function SidePanel(): VNode {
+function SidePanel(): JSX.Element {
   const [latestQuery, setLatestQuery] = useState<ClippedQuery | null>(null);
   useEffect(() => {
     window.chrome.storage.local.get(['latestClippedQuery'], (result) => {
