@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "vite build && tsc src/content-script.ts --outDir dist && npm run copy-files",
-    "copy-files": "cp src/manifest.json dist/ && cp src/background.ts dist/background.js && cp -r public dist/ && cp src/popup/index.html dist/popup.html && cp src/sidepanel/index.html dist/sidepanel.html"
+    "build": "vite build && tsc src/content-script.ts src/background.ts --outDir dist && npm run copy-files",
+    "copy-files": "cp src/manifest.json . && cp src/manifest.json dist/ && cp dist/background.js . && cp dist/content.js . && [ ! -d public ] && cp -r public . || true && cp dist/src/popup/index.html ./popup.html && cp dist/src/sidepanel/index.html ./sidepanel.html"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Curiosity Engine Sidepanel</title>
+  <style>
+    body {
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .clipped-content {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+    .query {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .answer {
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h2>Clipped Content</h2>
+  <div id="clippedContent" class="clipped-content">
+    No content clipped yet
+  </div>
+
+  <script>
+    // Listen for messages from background script
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === 'LATEST_CLIPPED_QUERY') {
+        const content = message.data;
+        const clippedContent = document.getElementById('clippedContent');
+        clippedContent.innerHTML = `
+          <div class="query">Query: ${content.raw_query}</div>
+          <div class="answer">Answer: ${content.answer_markdown}</div>
+        `;
+      }
+    });
+
+    // Load any existing clipped content on panel open
+    chrome.storage.local.get(['latestClippedQuery'], (result) => {
+      if (result.latestClippedQuery) {
+        const content = result.latestClippedQuery;
+        const clippedContent = document.getElementById('clippedContent');
+        clippedContent.innerHTML = `
+          <div class="query">Query: ${content.raw_query}</div>
+          <div class="answer">Answer: ${content.answer_markdown}</div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html> 

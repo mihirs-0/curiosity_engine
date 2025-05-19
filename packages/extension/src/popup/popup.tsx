@@ -1,8 +1,34 @@
+/// <reference types="chrome"/>
+
+// Define types for our messages and responses
+interface ClipResponse {
+  success: boolean;
+  error?: string;
+  data?: {
+    raw_query: string;
+    answer_markdown: string;
+  };
+}
+
+interface ApiResponse {
+  id: string;
+  sonar_status: string;
+  sonar_data?: {
+    error?: string;
+  };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-  const clipButton = document.getElementById('clipButton');
-  const openSidepanelButton = document.getElementById('openSidepanelButton');
-  const statusText = document.getElementById('status');
-  const statusIcon = document.getElementById('statusIcon');
+  const clipButton = document.getElementById('clipButton') as HTMLButtonElement;
+  const openSidepanelButton = document.getElementById('openSidepanelButton') as HTMLButtonElement;
+  const statusText = document.getElementById('status') as HTMLSpanElement;
+  const statusIcon = document.getElementById('statusIcon') as HTMLDivElement;
+
+  // Add null checks for DOM elements
+  if (!clipButton || !openSidepanelButton || !statusText || !statusIcon) {
+    console.error('Required DOM elements not found');
+    return;
+  }
 
   // Cache DOM elements and create document fragment for button content
   const buttonContent = {
@@ -21,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
     `)
   };
 
-  function updateStatus(message, type = 'ready') {
+  function updateStatus(message: string, type: 'ready' | 'error' = 'ready'): void {
     // Batch DOM updates
     requestAnimationFrame(() => {
       statusText.textContent = message;
@@ -29,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  function setLoading(isLoading) {
+  function setLoading(isLoading: boolean): void {
     // Batch DOM updates
     requestAnimationFrame(() => {
       clipButton.disabled = isLoading;
@@ -45,7 +71,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Send message to content script
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const response = await chrome.tabs.sendMessage(tab.id, { type: 'CLIP_CONTENT' });
+      if (!tab?.id) {
+        throw new Error('No active tab found');
+      }
+
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'CLIP_CONTENT' }) as ClipResponse;
 
       if (!response || !response.success) {
         throw new Error(response?.error || 'Failed to clip content');
@@ -68,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error(error.detail || 'API request failed');
       }
 
-      const result = await apiResponse.json();
+      const result = await apiResponse.json() as ApiResponse;
       
       // Check if the query was stored and processed successfully
       if (result.id && result.sonar_status) {
@@ -83,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     } catch (error) {
       console.error('Error:', error);
-      updateStatus(error.message || 'Failed to clip content', 'error');
+      updateStatus(error instanceof Error ? error.message : 'Failed to clip content', 'error');
     } finally {
       setLoading(false);
     }
@@ -105,8 +135,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Check if we're on a valid page
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-    const currentUrl = tabs[0].url;
-    if (!currentUrl.includes('perplexity.ai')) {
+    const currentUrl = tabs[0]?.url;
+    if (!currentUrl?.includes('perplexity.ai')) {
       clipButton.disabled = true;
       updateStatus('Please navigate to Perplexity AI', 'error');
     }
