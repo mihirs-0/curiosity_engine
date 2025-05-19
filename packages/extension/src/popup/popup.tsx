@@ -4,29 +4,38 @@ document.addEventListener('DOMContentLoaded', function() {
   const statusText = document.getElementById('status');
   const statusIcon = document.getElementById('statusIcon');
 
+  // Cache DOM elements and create document fragment for button content
+  const buttonContent = {
+    loading: document.createRange().createContextualFragment(`
+      <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle>
+      </svg>
+      Clipping...
+    `),
+    default: document.createRange().createContextualFragment(`
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+      </svg>
+      Clip Current Page
+    `)
+  };
+
   function updateStatus(message, type = 'ready') {
-    statusText.textContent = message;
-    statusIcon.className = `status-icon ${type}`;
+    // Batch DOM updates
+    requestAnimationFrame(() => {
+      statusText.textContent = message;
+      statusIcon.className = `status-icon ${type}`;
+    });
   }
 
   function setLoading(isLoading) {
-    clipButton.disabled = isLoading;
-    if (isLoading) {
-      clipButton.innerHTML = `
-        <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle>
-        </svg>
-        Clipping...
-      `;
-    } else {
-      clipButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-        </svg>
-        Clip Current Page
-      `;
-    }
+    // Batch DOM updates
+    requestAnimationFrame(() => {
+      clipButton.disabled = isLoading;
+      clipButton.innerHTML = '';
+      clipButton.appendChild(isLoading ? buttonContent.loading.cloneNode(true) : buttonContent.default.cloneNode(true));
+    });
   }
 
   clipButton.addEventListener('click', async () => {
@@ -36,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Send message to content script
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'clipContent' });
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'CLIP_CONTENT' });
 
       if (!response || !response.success) {
         throw new Error(response?.error || 'Failed to clip content');
