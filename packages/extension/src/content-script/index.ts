@@ -1,4 +1,9 @@
 // Content script for Perplexity AI
+console.log('[CE] content listener installed', chrome?.runtime?.id);
+chrome.runtime.onMessage.addListener((_,__,sendR)=>{
+  console.log('[CE] got message'); sendR('pong'); return true;
+});
+
 console.log('[Curiosity Engine] Content script loaded');
 
 // Cache DOM selectors
