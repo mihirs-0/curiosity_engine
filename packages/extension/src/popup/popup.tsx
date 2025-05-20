@@ -1,15 +1,8 @@
 /// <reference types="chrome"/>
 
-// Define types for our messages and responses
-interface ClipResponse {
-  success: boolean;
-  error?: string;
-  data?: {
-    raw_query: string;
-    answer_markdown: string;
-  };
-}
+import type { ClipResponse } from '../types/messages';
 
+// Define types for our messages and responses
 interface ApiResponse {
   id: string;
   sonar_status: string;
@@ -75,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error('No active tab found');
       }
 
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'clipContent' }) as ClipResponse;
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'CLIP_CONTENT' }) as ClipResponse;
 
       if (!response || !response.success) {
         throw new Error(response?.error || 'Failed to clip content');

@@ -1,18 +1,17 @@
 
 
 > curiosity-extension@1.0.0 build /Users/mihir/curiosity-engine/packages/extension
-> vite build
+> vite build && tsc src/content-script.ts src/background.ts --outDir dist && npm run copy-files
 
 [36mvite v6.3.5 [32mbuilding for production...[36m[39m
-[2K[1Gtransforming (1) [2msrc/content-script.ts[22m[2K[1G[32m✓[39m 10 modules transformed.
-[2K[1Grendering chunks (1)...[2K[1Grendering chunks (2)...[2K[1Grendering chunks (3)...[2K[1Grendering chunks (4)...[2K[1G[2K[1Gcomputing gzip size (0)...[2K[1Gcomputing gzip size (1)...[2K[1Gcomputing gzip size (2)...[2K[1Gcomputing gzip size (3)...[2K[1Gcomputing gzip size (4)...[2K[1Gcomputing gzip size (5)...[2K[1Gcomputing gzip size (6)...[2K[1G[2mdist/[22m[32msrc/sidepanel.html                         [39m[1m[2m 0.33 kB[22m[1m[22m[2m │ gzip: 0.24 kB[22m
-[2mdist/[22m[32mpopup.html                                 [39m[1m[2m 3.84 kB[22m[1m[22m[2m │ gzip: 1.26 kB[22m
-[2mdist/[22m[2massets/[22m[36mcontent-Cuqr6_5h.js                 [39m[1m[2m 0.56 kB[22m[1m[22m[2m │ gzip: 0.36 kB[22m
-[2mdist/[22m[2massets/[22m[36mmodulepreload-polyfill-B5Qt9EMX.js  [39m[1m[2m 0.71 kB[22m[1m[22m[2m │ gzip: 0.40 kB[22m
-[2mdist/[22m[2massets/[22m[36mpopup-CwCT3WFb.js                   [39m[1m[2m 2.35 kB[22m[1m[22m[2m │ gzip: 1.15 kB[22m
-[2mdist/[22m[2massets/[22m[36msidepanel-jPBpRnFk.js               [39m[1m[2m14.12 kB[22m[1m[22m[2m │ gzip: 5.87 kB[22m
-[32m✓ built in 92ms[39m
-
-> curiosity-extension@1.0.0 postbuild /Users/mihir/curiosity-engine/packages/extension
-> rm -rf dist && mkdir dist && cp manifest.json dist/ && cp background.js dist/ && cp -r assets dist/ && cp popup.html dist/ && cp popup.js dist/ && cp sidepanel.html dist/
-
+[2K[1Gtransforming (1) [2msrc/content-script/index.ts[22m[2K[1G[32m✓[39m 2 modules transformed.
+[2K[1G[31m✗[39m Build failed in 27ms
+[31merror during build:
+[31m[vite:build-html] Failed to resolve /assets/sidepanel-jPBpRnFk.js from /Users/mihir/curiosity-engine/packages/extension/src/sidepanel/index.html[31m
+file: [36m/Users/mihir/curiosity-engine/packages/extension/src/sidepanel/index.html[31m
+    at file:///Users/mihir/curiosity-engine/node_modules/.pnpm/vite@6.3.5_@types+node@22.15.18_jiti@1.21.7_yaml@2.8.0/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:36310:29
+    at async Promise.all (index 0)
+    at async Object.handler (file:///Users/mihir/curiosity-engine/node_modules/.pnpm/vite@6.3.5_@types+node@22.15.18_jiti@1.21.7_yaml@2.8.0/node_modules/vite/dist/node/chunks/dep-DBxKXgDP.js:36507:11)
+    at async transform (file:///Users/mihir/curiosity-engine/node_modules/.pnpm/rollup@4.40.2/node_modules/rollup/dist/es/shared/node-entry.js:20928:16)
+    at async ModuleLoader.addModuleSource (file:///Users/mihir/curiosity-engine/node_modules/.pnpm/rollup@4.40.2/node_modules/rollup/dist/es/shared/node-entry.js:21141:36)[39m
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 1.[39m

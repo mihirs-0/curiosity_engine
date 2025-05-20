@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "vite build && tsc src/content-script.ts src/background.ts --outDir dist && npm run copy-files",
-    "copy-files": "cp src/manifest.json . && cp src/manifest.json dist/ && cp dist/background.js . && cp dist/content-script.js . && [ ! -d public ] && cp -r public . || true && cp dist/src/popup/index.html ./popup.html && cp dist/src/sidepanel/index.html ./sidepanel.html && cp dist/assets/popup-*.js ./popup.js && cp dist/assets/sidepanel-*.js ./sidepanel.js && mkdir -p assets && cp dist/assets/modulepreload-polyfill-*.js ./assets/ && cp dist/assets/*.map ./assets/ 2>/dev/null || true"
+    "build": "rm -rf dist && vite build && cp manifest.json dist/ && cp -r icons dist/icons/"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",

@@ -4,36 +4,29 @@
   "version": "1.0.0",
   "description": "A Chrome extension for the Curiosity Engine",
 
-  "permissions": ["storage", "sidePanel", "scripting", "activeTab"],
+  "permissions": ["storage", "sidePanel", "activeTab"],
+  "host_permissions": ["https://www.perplexity.ai/*"],
 
-  "host_permissions": [
-    "https://www.perplexity.ai/*"
-  ],
-
-  "action": {
-    "default_popup": "/src/popup/index.html"
-  },
-
-  "side_panel": {
-    "default_path": "/src/sidepanel/index.html"
-  },
+  "action":     { "default_popup":  "popup.html" },
+  "side_panel": { "default_path":  "sidepanel.html" },
 
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background/index.js",
+    "type":           "module"
   },
 
   "content_scripts": [
     {
-      "matches": ["https://www.perplexity.ai/*"],
-      "js": ["content-script.js"],
-      "run_at": "document_idle"
+      "matches":   ["https://www.perplexity.ai/*"],
+      "js":        ["content-script/index.js"],
+      "run_at":    "document_idle",
+      "all_frames": true
     }
   ],
 
   "icons": {
-    "16": "assets/icon16.png",
-    "48": "assets/icon48.png",
-    "128": "assets/icon128.png"
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
   }
 }
