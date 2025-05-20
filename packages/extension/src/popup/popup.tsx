@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error('No active tab found');
       }
 
-      const response = await chrome.tabs.sendMessage(tab.id, { type: 'CLIP_CONTENT' }) as ClipResponse;
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'clipContent' }) as ClipResponse;
 
       if (!response || !response.success) {
         throw new Error(response?.error || 'Failed to clip content');

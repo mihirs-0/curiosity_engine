@@ -21,37 +21,10 @@
       white-space: pre-wrap;
     }
   </style>
+  <script type="module" crossorigin src="/assets/sidepanel-jPBpRnFk.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
 </head>
 <body>
-  <h2>Clipped Content</h2>
-  <div id="clippedContent" class="clipped-content">
-    No content clipped yet
-  </div>
-
-  <script>
-    // Listen for messages from background script
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.type === 'LATEST_CLIPPED_QUERY') {
-        const content = message.data;
-        const clippedContent = document.getElementById('clippedContent');
-        clippedContent.innerHTML = `
-          <div class="query">Query: ${content.raw_query}</div>
-          <div class="answer">Answer: ${content.answer_markdown}</div>
-        `;
-      }
-    });
-
-    // Load any existing clipped content on panel open
-    chrome.storage.local.get(['latestClippedQuery'], (result) => {
-      if (result.latestClippedQuery) {
-        const content = result.latestClippedQuery;
-        const clippedContent = document.getElementById('clippedContent');
-        clippedContent.innerHTML = `
-          <div class="query">Query: ${content.raw_query}</div>
-          <div class="answer">Answer: ${content.answer_markdown}</div>
-        `;
-      }
-    });
-  </script>
+  <div id="root"></div>
 </body>
 </html> 

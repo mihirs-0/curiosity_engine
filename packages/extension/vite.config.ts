@@ -14,15 +14,32 @@ export default defineConfig({
         background: resolve(__dirname, 'src/background.ts')           // → dist/background.js
       },
       output: {
-        entryFileNames: '[name].js',             // popup.js, sidepanel.js, content-script.js, background.js
-        chunkFileNames: 'chunks/[name]-[hash].js',
+        entryFileNames: (chunkInfo) => {
+          return chunkInfo.name === 'content-script' || chunkInfo.name === 'background'
+            ? '[name].js'
+            : 'assets/[name]-[hash].js';
+        },
+        chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]'
       }
     },
     outDir: 'dist',
     emptyOutDir: true,
     copyPublicDir: true,
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    sourcemap: true,
+    modulePreload: {
+      polyfill: true,
+      resolveDependencies: (filename, deps, { hostId, hostType }) => {
+        return deps;
+      }
+    }
+  },
+  resolve: {
+    extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
   },
   publicDir: 'public'
 });
