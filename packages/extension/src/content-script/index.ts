@@ -1,23 +1,18 @@
 // Content script for Perplexity AI
 console.log('[CE] content listener installed', chrome?.runtime?.id);
-chrome.runtime.onMessage.addListener((_,__,sendR)=>{
-  console.log('[CE] got message'); sendR('pong'); return true;
-});
 
 console.log('[Curiosity Engine] Content script loaded');
 
 // Cache DOM selectors
 const selectors = {
     main: 'main',
-    query: 'h1',
-    answer: '[data-testid="answer-content"]'
+    query: 'h1'
 };
 
 // Pre-compile selectors for better performance
 const compiledSelectors = {
     main: document.querySelector(selectors.main),
-    query: document.querySelector(selectors.query),
-    answer: document.querySelector(selectors.answer)
+    query: document.querySelector(selectors.query)
 };
 
 // Listen for messages from the popup
@@ -36,27 +31,24 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             }
             
             // Get the raw query (question) - use cached or live query
-            const queryElement = compiledSelectors.query || document.querySelector(selectors.query);
+            //const queryElement = compiledSelectors.query || document.querySelector(selectors.query);
+            const queryElement = document.querySelector('h1');
+            if (!queryElement || !queryElement.textContent?.trim()) {
+                throw new Error('No valid <h1> element found on the page');
+            }
             const rawQuery = queryElement?.textContent || '';
             console.log('[Curiosity Engine] Found query:', rawQuery);
-            
-            // Get the answer content - use cached or live query
-            const answerElement = compiledSelectors.answer || document.querySelector(selectors.answer);
-            const answerMarkdown = answerElement?.textContent || '';
-            console.log('[Curiosity Engine] Found answer:', answerMarkdown);
             
             // Send back the clipped content
             const response = {
                 success: true,
                 data: {
-                    raw_query: rawQuery,
-                    answer_markdown: answerMarkdown
+                    raw_query: rawQuery
                 }
             };
             console.log('[Curiosity Engine] Sending response:', response);
             sendResponse(response);
-        }
-        catch (error) {
+        } catch (error) {
             console.error('[Curiosity Engine] Error clipping content:', error);
             const response = {
                 success: false,

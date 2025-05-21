@@ -5,7 +5,6 @@ import type { JSX } from 'preact';
 
 interface ClippedQuery {
   raw_query: string;
-  answer_markdown: string;
 }
 
 function SidePanel(): VNode {
@@ -35,9 +34,6 @@ function SidePanel(): VNode {
         <div style={{ marginTop: 16 }}>
           <h3>Latest Clipped Query:</h3>
           <div><strong>Query:</strong> {latestQuery.raw_query}</div>
-          <div style={{ marginTop: 8 }}><strong>Answer:</strong><br />
-            <pre style={{ whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: 8, borderRadius: 4 }}>{latestQuery.answer_markdown}</pre>
-          </div>
         </div>
       ) : (
         <div style={{ marginTop: 16, color: '#888' }}>No query clipped yet.</div>

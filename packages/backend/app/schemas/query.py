@@ -4,7 +4,6 @@ from typing import Optional, Dict, Any
 
 class QueryBase(BaseModel):
     raw_query: str = Field(..., min_length=1)
-    answer_markdown: str = Field(..., min_length=1)
 
 class QueryCreate(QueryBase):
     pass
@@ -22,5 +21,6 @@ class Query(QueryBase):
 
 class QueryResponse(BaseModel):
     id: int
+    raw_query: str
     sonar_data: Optional[Dict[str, Any]] = None
     sonar_status: str 

@@ -2,7 +2,6 @@
 
 import type { ClipResponse } from '../types/messages';
 
-// Define types for our messages and responses
 interface ApiResponse {
   id: string;
   sonar_status: string;
@@ -11,19 +10,20 @@ interface ApiResponse {
   };
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+const SUPABASE_FUNCTION_URL = 'https://xedzwpnjonvrazqlowhg.functions.supabase.co/clip-query';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlZHp3cG5qb252cmF6cWxvd2hnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDczNjE4NjEsImV4cCI6MjA2MjkzNzg2MX0.72U_cJtgVYxThX8vqyZ1hkPK6dluvqqEcWEx1nIN7Ro'; // 🔐 Replace this securely
+
+document.addEventListener('DOMContentLoaded', function () {
   const clipButton = document.getElementById('clipButton') as HTMLButtonElement;
   const openSidepanelButton = document.getElementById('openSidepanelButton') as HTMLButtonElement;
   const statusText = document.getElementById('status') as HTMLSpanElement;
   const statusIcon = document.getElementById('statusIcon') as HTMLDivElement;
 
-  // Add null checks for DOM elements
   if (!clipButton || !openSidepanelButton || !statusText || !statusIcon) {
     console.error('Required DOM elements not found');
     return;
   }
 
-  // Cache DOM elements and create document fragment for button content
   const buttonContent = {
     loading: document.createRange().createContextualFragment(`
       <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   function updateStatus(message: string, type: 'ready' | 'error' = 'ready'): void {
-    // Batch DOM updates
     requestAnimationFrame(() => {
       statusText.textContent = message;
       statusIcon.className = `status-icon ${type}`;
@@ -49,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function setLoading(isLoading: boolean): void {
-    // Batch DOM updates
     requestAnimationFrame(() => {
       clipButton.disabled = isLoading;
       clipButton.innerHTML = '';
@@ -62,51 +60,44 @@ document.addEventListener('DOMContentLoaded', function() {
       setLoading(true);
       updateStatus('Clipping content...', 'ready');
 
-      // Send message to content script
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) {
-        throw new Error('No active tab found');
-      }
+      if (!tab?.id) throw new Error('No active tab found');
 
-      const response = await chrome.tabs.sendMessage(tab.id, { type: 'CLIP_CONTENT' }) as ClipResponse;
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'CLIP_CONTENT' });
+      if (!response?.success) throw new Error(response.error || 'Content script failed to clip content');
 
-      if (!response || !response.success) {
-        throw new Error(response?.error || 'Failed to clip content');
-      }
+      const rawQuery = response.data?.raw_query;
+      if (!rawQuery) throw new Error('Missing raw_query');
 
-      // Validate the response data
-      if (!response.data?.raw_query || !response.data?.answer_markdown) {
-        throw new Error('Invalid content format');
-      }
-
-      // Send to backend API
-      const apiResponse = await fetch('http://localhost:8000/queries', {
+      const apiResponse = await fetch(SUPABASE_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(response.data)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ raw_query: rawQuery })
       });
 
       if (!apiResponse.ok) {
-        const error = await apiResponse.json();
-        throw new Error(error.detail || 'API request failed');
+        const error = await apiResponse.text();
+        throw new Error(`API Error: ${error}`);
       }
 
       const result = await apiResponse.json() as ApiResponse;
-      
-      // Check if the query was stored and processed successfully
+      console.log('✅ Supabase function response:', result);
+
       if (result.id && result.sonar_status) {
-        updateStatus('Content clipped successfully!', 'ready');
-        // Optionally show different status based on sonar_status
+        updateStatus('Clipped & sent successfully!', 'ready');
         if (result.sonar_status === 'error') {
-          console.warn('Sonar processing failed:', result.sonar_data?.error);
+          console.warn('⚠️ Sonar issue:', result.sonar_data?.error);
         }
       } else {
-        throw new Error('Invalid API response format');
+        throw new Error('Invalid backend response format');
       }
 
-    } catch (error) {
-      console.error('Error:', error);
-      updateStatus(error instanceof Error ? error.message : 'Failed to clip content', 'error');
+    } catch (err) {
+      console.error('❌ Error:', err);
+      updateStatus(err instanceof Error ? err.message : 'Failed to clip content', 'error');
     } finally {
       setLoading(false);
     }
@@ -116,7 +107,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (chrome.sidePanel) {
       await chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
     } else {
-      // Fallback for browsers that don't support side panel
       chrome.windows.create({
         url: 'sidepanel.html',
         type: 'popup',
@@ -126,7 +116,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Check if we're on a valid page
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const currentUrl = tabs[0]?.url;
     if (!currentUrl?.includes('perplexity.ai')) {
@@ -134,4 +123,4 @@ document.addEventListener('DOMContentLoaded', function() {
       updateStatus('Please navigate to Perplexity AI', 'error');
     }
   });
-}); 
+});
