@@ -1,5 +1,0 @@
-
-
-> @curiosity-engine/frontend@0.1.0 build /Users/mihir/curiosity-engine/packages/frontend
-> tsc && vite build
-

@@ -1,0 +1,9 @@
+{
+  "/test/page": "app/test/page.js",
+  "/test-sonar/page": "app/test-sonar/page.js",
+  "/page": "app/page.js",
+  "/(app)/trips/preferences/[id]/page": "app/(app)/trips/preferences/[id]/page.js",
+  "/(app)/trips/[id]/page": "app/(app)/trips/[id]/page.js",
+  "/(app)/result/[id]/page": "app/(app)/result/[id]/page.js",
+  "/(app)/discover/page": "app/(app)/discover/page.js"
+}
