@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabaseClient'
 
 interface Query {
   id: string
   raw_query: string
-  answer_markdown: string
+  status: string
   created_at: string
+  trip_start?: string
+  trip_end?: string
 }
 
 export default function QueriesList() {
@@ -25,7 +27,7 @@ export default function QueriesList() {
         if (error) throw error
         setQueries(data || [])
       } catch (err) {
-        setError('Error loading clips')
+        setError('Error loading queries')
         console.error('Error fetching queries:', err)
       } finally {
         setLoading(false)
@@ -54,43 +56,57 @@ export default function QueriesList() {
   if (queries.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-600 mb-4">No saved queries yet</p>
-        <Link
-          to="/new"
-          className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-        >
-          Clip a Perplexity Answer
-        </Link>
+        <p className="text-gray-600 mb-4">No trips planned yet</p>
+        <p className="text-sm text-gray-500">Use the form above to create your first trip</p>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {queries.map((query) => (
-        <Link
+        <div
           key={query.id}
-          to={`/q/${query.id}`}
-          className="block transform transition-all duration-200 hover:scale-105 hover:shadow-lg"
+          className="bg-white rounded-lg shadow-md p-6 h-full"
         >
-          <div className="bg-white rounded-lg shadow-md p-6 h-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
               {query.raw_query.length > 50
                 ? `${query.raw_query.slice(0, 50)}...`
                 : query.raw_query}
             </h3>
-            <p className="text-gray-600 mb-4 line-clamp-2">
-              {query.answer_markdown.split('\n')[0]}
-            </p>
-            <p className="text-sm text-gray-500">
-              {new Date(query.created_at).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              query.status === 'queued' ? 'bg-yellow-100 text-yellow-800' :
+              query.status === 'completed' ? 'bg-green-100 text-green-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {query.status}
+            </span>
           </div>
-        </Link>
+          
+          {query.trip_start && query.trip_end && (
+            <p className="text-sm text-gray-600 mb-4">
+              {new Date(query.trip_start).toLocaleDateString()} - {new Date(query.trip_end).toLocaleDateString()}
+            </p>
+          )}
+          
+          <p className="text-sm text-gray-500 mt-4">
+            Created: {new Date(query.created_at).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
+          
+          {query.status === 'completed' && (
+            <Link
+              to={`/trip/${query.id}`}
+              className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              View Itinerary
+            </Link>
+          )}
+        </div>
       ))}
     </div>
   )

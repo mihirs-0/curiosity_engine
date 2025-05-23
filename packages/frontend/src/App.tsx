@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import QueriesList from './components/QueriesList'
+import QueryBoard from './components/QueryBoard'
 
 function App() {
   return (
@@ -10,7 +10,7 @@ function App() {
             Curiosity Engine
           </h1>
           <Routes>
-            <Route path="/" element={<QueriesList />} />
+            <Route path="/" element={<QueryBoard />} />
             {/* Add more routes as needed */}
           </Routes>
         </div>
