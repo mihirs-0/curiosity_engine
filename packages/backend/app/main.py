@@ -5,31 +5,27 @@ import httpx
 import os
 import jwt
 from dotenv import load_dotenv
-from supabase import create_client, Client
 from typing import List, Optional
 from pydantic import BaseModel
 import uuid
 from datetime import datetime
 
+# Import database and routers
+from .database import create_db_and_tables, get_supabase
+from .routers import chat, itinerary
+
 # Load environment variables
 load_dotenv()
 
-# Initialize Supabase client (optional for local development)
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_ANON_KEY")
-supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+# Get Supabase client from database module
+supabase = None
+try:
+    supabase = get_supabase()
+    print("✅ Using Supabase for all database operations")
+except Exception as e:
+    print(f"⚠️ Supabase not available: {e}")
 
-# For local development without Supabase
-USE_SUPABASE = bool(supabase_url and supabase_key)
-supabase: Optional[Client] = None
-
-if USE_SUPABASE:
-    supabase = create_client(supabase_url, supabase_service_key or supabase_key)
-    print("✅ Supabase client initialized")
-else:
-    print("⚠️ Running in local mode without Supabase - queries will be stored in memory")
-
-# In-memory storage for local development
+# In-memory storage for local development (fallback only)
 local_queries = []
 
 # Security
@@ -65,6 +61,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(chat.router)
+app.include_router(itinerary.router)
+
+@app.on_event("startup")
+def startup_event():
+    """Initialize database tables on startup"""
+    create_db_and_tables()
+    print("✅ Database tables created")
 
 async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[User]:
     """Extract user from JWT token (optional for some endpoints)"""
@@ -157,7 +163,7 @@ async def create_query(query: QueryCreate, user: Optional[User] = Depends(get_cu
         if user:
             query_data["user_id"] = user.id
         
-        if USE_SUPABASE and supabase:
+        if supabase:
             # Use Supabase
             result = supabase.table("queries").insert(query_data).execute()
             db_query = result.data[0]
@@ -179,7 +185,7 @@ async def create_query(query: QueryCreate, user: Optional[User] = Depends(get_cu
             "sonar_status": "error" if "error" in sonar_data else "completed"
         }
         
-        if USE_SUPABASE and supabase:
+        if supabase:
             # Update in Supabase
             result = supabase.table("queries").update(update_data).eq("id", db_query["id"]).execute()
             updated_query = result.data[0]
@@ -205,7 +211,7 @@ async def create_query(query: QueryCreate, user: Optional[User] = Depends(get_cu
 @app.get("/queries", response_model=List[QueryResponse])
 def get_queries(user: Optional[User] = Depends(get_current_user)):
     try:
-        if USE_SUPABASE and supabase:
+        if supabase:
             # Use Supabase
             query_builder = supabase.table("queries").select("*")
             
@@ -233,7 +239,7 @@ def get_queries(user: Optional[User] = Depends(get_current_user)):
 @app.get("/queries/{query_id}", response_model=QueryResponse)
 def get_query(query_id: str, user: Optional[User] = Depends(get_current_user)):
     try:
-        if USE_SUPABASE and supabase:
+        if supabase:
             # Use Supabase
             query_builder = supabase.table("queries").select("*").eq("id", query_id)
             

@@ -3,6 +3,18 @@ import { createBrowserClient } from './supabase'
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
 
+// Check if we're in development mode with dummy Supabase credentials
+const isDevelopmentMode = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  return !supabaseUrl || 
+         !supabaseAnonKey || 
+         supabaseUrl.includes('your_supabase') || 
+         supabaseAnonKey.includes('your_supabase') ||
+         supabaseUrl === 'https://dummy.supabase.co'
+}
+
 // Types
 export interface QueryCreate {
   raw_query: string
@@ -36,14 +48,25 @@ class ApiClient {
    * Get authentication headers for API requests
    */
   private async getAuthHeaders(): Promise<Record<string, string>> {
-    const { data: { session } } = await this.supabase.auth.getSession()
-    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
 
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`
+    // Skip authentication in development mode with dummy credentials
+    if (isDevelopmentMode()) {
+      console.log('🔧 Development mode: Skipping Supabase authentication')
+      return headers
+    }
+
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession()
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to get Supabase session:', error)
+      // Continue without authentication in case of error
     }
 
     return headers

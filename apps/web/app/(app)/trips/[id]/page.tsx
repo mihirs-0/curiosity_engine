@@ -20,6 +20,11 @@ import { formatDistanceToNow } from "date-fns"
 import { useQuery, useApi } from "@/hooks/use-api"
 import type { QueryResponse } from "@/lib/api-client"
 
+// Import new components
+import TripChat from "@/src/features/chat/TripChat"
+import FinalizeModal from "@/src/features/itinerary/FinalizeModal"
+import TripSidebar from "@/src/features/chat/TripSidebar"
+
 interface Trip {
   trip_id: string
   title: string
@@ -31,6 +36,7 @@ interface Trip {
   created_at: string
   status: string
   user_id: string
+  itinerary?: any
 }
 
 interface Message {
@@ -42,6 +48,12 @@ interface Message {
     avatar?: string
   }
   timestamp: string
+  role: "user" | "assistant"
+  suggestions?: Array<{
+    suggestion: string
+    day?: number
+    tags?: string[]
+  }>
 }
 
 interface Collaborator {
@@ -109,7 +121,6 @@ export default function TripDashboardPage() {
   const { user } = useAuth()
   const supabase = createBrowserClient()
   const { toast } = useToast()
-  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Use real query data instead of mock data
   const { query: originalQuery, isLoading: queryLoading, error: queryError } = useQuery(id)
@@ -119,12 +130,12 @@ export default function TripDashboardPage() {
   const [personalizedItinerary, setPersonalizedItinerary] = useState<QueryResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState("")
-  const [sendingMessage, setSendingMessage] = useState(false)
   const [tripBookmarks, setTripBookmarks] = useState<Array<{ title: string; url: string; description?: string }>>([])
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
   const [enriching, setEnriching] = useState(false)
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview")
 
   useEffect(() => {
     const fetchTripData = async () => {
@@ -177,6 +188,7 @@ export default function TripDashboardPage() {
               name: "Trip Assistant",
             },
             timestamp: new Date().toISOString(),
+            role: "assistant",
           },
         ])
 
@@ -225,66 +237,6 @@ export default function TripDashboardPage() {
     }
   }, [id, user, originalQuery, queryLoading, queryError])
 
-  // Scroll to bottom of messages when new messages are added
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [messages])
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMessage.trim()) return
-
-    setSendingMessage(true)
-
-    // Add user message
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      content: newMessage,
-      sender: {
-        id: user?.id || "guest",
-        name: user?.user_metadata?.full_name || user?.email || "You",
-        avatar: user?.user_metadata?.avatar_url,
-      },
-      timestamp: new Date().toISOString(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setNewMessage("")
-
-    // Add to activities
-    const newActivity: Activity = {
-      id: `activity-${Date.now()}`,
-      type: "message",
-      user: {
-        id: user?.id || "guest",
-        name: user?.user_metadata?.full_name || user?.email || "You",
-        avatar: user?.user_metadata?.avatar_url,
-      },
-      content: `sent a message: "${newMessage.substring(0, 30)}${newMessage.length > 30 ? "..." : ""}"`,
-      timestamp: new Date().toISOString(),
-    }
-
-    setActivities((prev) => [newActivity, ...prev])
-
-    // Simulate AI response
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        content: `I'll help you with "${newMessage}". Based on your preferences for ${trip?.title}, I recommend exploring the local cuisine and visiting the historical sites mentioned in your trip highlights.`,
-        sender: {
-          id: "system",
-          name: "Trip Assistant",
-        },
-        timestamp: new Date().toISOString(),
-      }
-
-      setMessages((prev) => [...prev, assistantMessage])
-      setSendingMessage(false)
-    }, 1500)
-  }
-
   const handleEnrichItinerary = async () => {
     setEnriching(true)
 
@@ -302,6 +254,7 @@ export default function TripDashboardPage() {
           name: "Trip Assistant",
         },
         timestamp: new Date().toISOString(),
+        role: "assistant",
       }
 
       setMessages((prev) => [...prev, enrichmentMessage])
@@ -333,6 +286,28 @@ export default function TripDashboardPage() {
       })
     } finally {
       setEnriching(false)
+    }
+  }
+
+  const handleItineraryGenerated = (itinerary: any) => {
+    setTrip(prev => prev ? { ...prev, itinerary } : null)
+  }
+
+  const handleNavigateToItinerary = () => {
+    setActiveTab("itinerary")
+  }
+
+  const handleActivityClick = (activity: Activity) => {
+    switch (activity.type) {
+      case "message":
+        setActiveTab("chat")
+        break
+      case "bookmark":
+        setActiveTab("bookmarks")
+        break
+      case "itinerary":
+        setActiveTab("itinerary")
+        break
     }
   }
 
@@ -460,7 +435,7 @@ export default function TripDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main content area */}
           <div className="lg:col-span-3">
-            <Tabs defaultValue="overview" className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="bg-amber-50 p-1">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="chat">Trip Assistant</TabsTrigger>
@@ -472,7 +447,7 @@ export default function TripDashboardPage() {
               <TabsContent value="overview" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Highlights Section */}
-                  {tripDetails.highlights && tripDetails.highlights.length > 0 && (
+                  {tripDetails?.highlights && tripDetails.highlights.length > 0 && (
                     <div className="md:col-span-2">
                       <Card className="shadow-md h-full">
                         <CardHeader>
@@ -492,7 +467,7 @@ export default function TripDashboardPage() {
                   )}
 
                   {/* Links Section */}
-                  {tripDetails.links && tripDetails.links.length > 0 && (
+                  {tripDetails?.links && tripDetails.links.length > 0 && (
                     <div className="md:col-span-1">
                       <Card className="shadow-md h-full">
                         <CardHeader>
@@ -522,7 +497,7 @@ export default function TripDashboardPage() {
 
                 <div className="flex justify-center mt-6">
                   <Button
-                    onClick={() => document.querySelector('[data-value="chat"]')?.click()}
+                    onClick={() => setActiveTab("chat")}
                     className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                   >
                     <MessageSquare className="mr-2 h-4 w-4" />
@@ -533,111 +508,7 @@ export default function TripDashboardPage() {
 
               {/* Chat Tab */}
               <TabsContent value="chat" className="space-y-6">
-                <Card className="shadow-md">
-                  <CardHeader>
-                    <CardTitle>Trip Planning Assistant</CardTitle>
-                    <CardDescription>Ask questions and get personalized recommendations</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col h-[500px]">
-                      <ScrollArea className="flex-1 pr-4 mb-4">
-                        <div className="space-y-4">
-                          {messages.map((message) => (
-                            <div
-                              key={message.id}
-                              className={`flex ${
-                                message.sender.id === user?.id || message.sender.id === "guest"
-                                  ? "justify-end"
-                                  : "justify-start"
-                              }`}
-                            >
-                              <div className="flex items-start max-w-[80%] gap-2">
-                                {message.sender.id !== user?.id && message.sender.id !== "guest" && (
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage
-                                      src={message.sender.avatar || "/placeholder.svg"}
-                                      alt={message.sender.name}
-                                    />
-                                    <AvatarFallback>{message.sender.name.charAt(0).toUpperCase()}</AvatarFallback>
-                                  </Avatar>
-                                )}
-                                <div
-                                  className={`rounded-lg p-3 ${
-                                    message.sender.id === user?.id || message.sender.id === "guest"
-                                      ? "bg-amber-500 text-white"
-                                      : message.sender.id === "system"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : "bg-gray-100 text-gray-800"
-                                  }`}
-                                >
-                                  {message.sender.id !== user?.id &&
-                                    message.sender.id !== "guest" &&
-                                    message.sender.id !== "system" && (
-                                      <p className="text-xs font-medium mb-1">{message.sender.name}</p>
-                                    )}
-                                  <p>{message.content}</p>
-                                  <p className="text-xs opacity-70 mt-1">
-                                    {new Date(message.timestamp).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
-                                  </p>
-                                </div>
-                                {(message.sender.id === user?.id || message.sender.id === "guest") && (
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage
-                                      src={user?.user_metadata?.avatar_url || "/placeholder.svg"}
-                                      alt={user?.user_metadata?.full_name || user?.email || "You"}
-                                    />
-                                    <AvatarFallback>
-                                      {user?.user_metadata?.full_name
-                                        ? user.user_metadata.full_name.charAt(0).toUpperCase()
-                                        : user?.email
-                                          ? user.email.charAt(0).toUpperCase()
-                                          : "Y"}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                          {sendingMessage && (
-                            <div className="flex justify-start">
-                              <div className="flex items-start max-w-[80%] gap-2">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback>A</AvatarFallback>
-                                </Avatar>
-                                <div className="rounded-lg p-3 bg-blue-100 text-blue-800">
-                                  <div className="flex items-center space-x-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Thinking...</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <div ref={messagesEndRef} />
-                        </div>
-                      </ScrollArea>
-                      <form onSubmit={handleSendMessage} className="flex space-x-2">
-                        <Input
-                          placeholder="Ask about your trip..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          disabled={sendingMessage}
-                          className="flex-1"
-                        />
-                        <Button
-                          type="submit"
-                          disabled={sendingMessage || !newMessage.trim()}
-                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                        >
-                          {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
-                        </Button>
-                      </form>
-                    </div>
-                  </CardContent>
-                </Card>
+                <TripChat tripId={id} initialMessages={messages} />
               </TabsContent>
 
               {/* Bookmarks Tab */}
@@ -692,130 +563,86 @@ export default function TripDashboardPage() {
                       variant="outline"
                       size="sm"
                       className="flex items-center gap-2"
-                      onClick={handleEnrichItinerary}
-                      disabled={enriching}
+                      onClick={() => setShowFinalizeModal(true)}
                     >
-                      {enriching ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Zap className="h-4 w-4 text-amber-500" />
-                      )}
-                      {enriching ? "Enriching..." : "Enrich with AI"}
+                      <Calendar className="h-4 w-4 text-amber-500" />
+                      Generate Final Itinerary
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    {enriching ? (
-                      <div className="text-center py-8">
-                        <Loader2 className="h-12 w-12 animate-spin text-amber-500 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium mb-2">Enriching Your Itinerary</h3>
-                        <p className="text-gray-600">
-                          Our AI is analyzing your preferences and creating a personalized day-by-day plan...
-                        </p>
-                      </div>
-                    ) : activities.some((a) => a.type === "itinerary") ? (
+                    {trip?.itinerary ? (
                       <div className="space-y-6">
-                        <div className="border rounded-lg overflow-hidden">
-                          <div className="bg-amber-50 p-4 border-b">
-                            <h3 className="font-medium text-lg">Day 1: Arrival & Orientation</h3>
-                            <p className="text-sm text-gray-600">Getting settled and exploring the neighborhood</p>
-                          </div>
-                          <div className="p-4 space-y-4">
-                            <div className="flex items-start gap-3">
-                              <div className="bg-amber-100 text-amber-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
-                                AM
-                              </div>
-                              <div>
-                                <h4 className="font-medium">Arrival & Check-in</h4>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  Arrive at your accommodation and get settled in. Based on your luxury preference (
-                                  {getLuxuryLabel(trip.luxury_level)}), we recommend the Hotel Athena with caldera
-                                  views.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                              <div className="bg-amber-100 text-amber-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
-                                PM
-                              </div>
-                              <div>
-                                <h4 className="font-medium">Sunset Dinner</h4>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  Enjoy a relaxing dinner at Argo Restaurant with stunning sunset views. Perfect for
-                                  {trip.travel_with === "partner" ? " a romantic evening" : " your first evening"}.
-                                </p>
-                                <div className="mt-2 flex items-center gap-2">
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                    AI Recommendation
-                                  </span>
-                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                                    Matches your interests
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                        <div className="text-center mb-6">
+                          <h3 className="text-xl font-semibold">{trip.itinerary.title}</h3>
+                          <p className="text-gray-600">{trip.itinerary.days?.length || 0} days planned</p>
                         </div>
-
-                        <div className="border rounded-lg overflow-hidden">
-                          <div className="bg-amber-50 p-4 border-b">
-                            <h3 className="font-medium text-lg">Day 2: Cultural Exploration</h3>
-                            <p className="text-sm text-gray-600">Discovering local history and traditions</p>
-                          </div>
-                          <div className="p-4 space-y-4">
-                            <div className="flex items-start gap-3">
-                              <div className="bg-amber-100 text-amber-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
-                                AM
-                              </div>
-                              <div>
-                                <h4 className="font-medium">Ancient Akrotiri Tour</h4>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  Visit the archaeological site of Akrotiri, a prehistoric settlement preserved by
-                                  volcanic ash. Perfect for your interest in culture & history.
-                                </p>
-                              </div>
+                        
+                        {trip.itinerary.days?.map((day: any, index: number) => (
+                          <div key={day.day || index} className="border rounded-lg overflow-hidden">
+                            <div className="bg-amber-50 p-4 border-b">
+                              <h3 className="font-medium text-lg">Day {day.day}: {day.summary}</h3>
                             </div>
-                            <div className="flex items-start gap-3">
-                              <div className="bg-amber-100 text-amber-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
-                                PM
-                              </div>
-                              <div>
-                                <h4 className="font-medium">Wine Tasting Experience</h4>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  Enjoy a wine tasting tour at Santo Wines, sampling local varieties grown in volcanic
-                                  soil. Includes food pairing with local delicacies.
-                                </p>
-                                <div className="mt-2 flex items-center gap-2">
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                    AI Recommendation
-                                  </span>
+                            <div className="p-4 space-y-4">
+                              {day.morning && (
+                                <div className="flex items-start gap-3">
+                                  <div className="bg-amber-100 text-amber-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                                    AM
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium">Morning</h4>
+                                    <p className="text-sm text-gray-600 mt-1">{day.morning}</p>
+                                  </div>
                                 </div>
-                              </div>
+                              )}
+                              {day.afternoon && (
+                                <div className="flex items-start gap-3">
+                                  <div className="bg-amber-100 text-amber-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                                    PM
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium">Afternoon</h4>
+                                    <p className="text-sm text-gray-600 mt-1">{day.afternoon}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {day.evening && (
+                                <div className="flex items-start gap-3">
+                                  <div className="bg-amber-100 text-amber-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                                    EVE
+                                  </div>
+                                  <div>
+                                    <h4 className="font-medium">Evening</h4>
+                                    <p className="text-sm text-gray-600 mt-1">{day.evening}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {day.notes && day.notes.length > 0 && (
+                                <div className="mt-3 p-3 bg-blue-50 rounded">
+                                  <h5 className="text-sm font-medium text-blue-800 mb-1">Notes:</h5>
+                                  <ul className="text-sm text-blue-700 space-y-1">
+                                    {day.notes.map((note: string, noteIndex: number) => (
+                                      <li key={noteIndex}>• {note}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-
-                        <Button
-                          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                          onClick={() => document.querySelector('[data-value="chat"]')?.click()}
-                        >
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          Customize Your Itinerary
-                        </Button>
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-8">
                         <Calendar className="h-12 w-12 mx-auto mb-4 text-amber-500" />
-                        <h3 className="text-lg font-medium mb-2">Itinerary Coming Soon</h3>
+                        <h3 className="text-lg font-medium mb-2">No Itinerary Yet</h3>
                         <p className="text-gray-600 mb-6">
-                          Click "Enrich with AI" to generate a personalized day-by-day itinerary based on your
-                          preferences.
+                          Generate a final itinerary based on your chat suggestions and preferences.
                         </p>
                         <Button
-                          onClick={handleEnrichItinerary}
+                          onClick={() => setShowFinalizeModal(true)}
                           className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                         >
-                          <Zap className="mr-2 h-4 w-4" />
-                          Enrich with AI
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Generate Final Itinerary
                         </Button>
                       </div>
                     )}
@@ -826,134 +653,26 @@ export default function TripDashboardPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Collaborators Card */}
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle className="text-base">Collaborators</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={user?.user_metadata?.avatar_url || "/placeholder.svg"}
-                        alt={user?.user_metadata?.full_name || user?.email || "You"}
-                      />
-                      <AvatarFallback>
-                        {user?.user_metadata?.full_name
-                          ? user.user_metadata.full_name.charAt(0).toUpperCase()
-                          : user?.email
-                            ? user.email.charAt(0).toUpperCase()
-                            : "Y"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {user?.user_metadata?.full_name || user?.email || "You"} (You)
-                      </p>
-                      <p className="text-xs text-green-600">Online</p>
-                    </div>
-                  </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Owner</span>
-                </div>
-
-                {collaborators.map((collaborator) => (
-                  <div key={collaborator.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={collaborator.avatar || "/placeholder.svg"} alt={collaborator.name} />
-                        <AvatarFallback>{collaborator.name.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{collaborator.name}</p>
-                        {collaborator.status === "active" && collaborator.lastActive && (
-                          <p className="text-xs text-gray-500">
-                            Active {formatDistanceToNow(new Date(collaborator.lastActive), { addSuffix: true })}
-                          </p>
-                        )}
-                        {collaborator.status === "pending" && (
-                          <p className="text-xs text-amber-600">Invitation pending</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => document.querySelector('[data-trigger="share-trip-dialog"]')?.click()}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Invite More People
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Activity Feed */}
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle className="text-base">Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[300px] pr-4">
-                  <div className="space-y-4">
-                    {activities.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
-                          <AvatarFallback>{activity.user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium">{activity.user.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
-                            </p>
-                          </div>
-                          <p className="text-sm text-gray-700">{activity.content}</p>
-                          {activity.type === "message" && (
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="h-auto p-0 text-amber-600"
-                              onClick={() => document.querySelector('[data-value="chat"]')?.click()}
-                            >
-                              View in chat
-                            </Button>
-                          )}
-                          {activity.type === "bookmark" && (
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="h-auto p-0 text-amber-600"
-                              onClick={() => document.querySelector('[data-value="bookmarks"]')?.click()}
-                            >
-                              View bookmarks
-                            </Button>
-                          )}
-                          {activity.type === "itinerary" && (
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="h-auto p-0 text-amber-600"
-                              onClick={() => document.querySelector('[data-value="itinerary"]')?.click()}
-                            >
-                              View itinerary
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+          <div className="lg:col-span-1">
+            <TripSidebar
+              tripId={id}
+              collaborators={collaborators}
+              activities={activities}
+              onInviteClick={() => (document.querySelector('[data-trigger="share-trip-dialog"]') as HTMLElement)?.click()}
+              onActivityClick={handleActivityClick}
+            />
           </div>
         </div>
       </div>
+
+      {/* Finalize Modal */}
+      <FinalizeModal
+        isOpen={showFinalizeModal}
+        onClose={() => setShowFinalizeModal(false)}
+        tripId={id}
+        onItineraryGenerated={handleItineraryGenerated}
+        onNavigateToItinerary={handleNavigateToItinerary}
+      />
     </div>
   )
 }
