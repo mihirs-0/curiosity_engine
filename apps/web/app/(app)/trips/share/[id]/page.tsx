@@ -5,12 +5,13 @@ import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/auth-context"
-import { createBrowserClient } from "@/lib/supabase"
+
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2, MapPin, Users, Sparkles, Check } from "lucide-react"
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { mockResults } from "@/lib/mock-data"
+import { supabase } from "@/lib/supabase"
 
 interface Trip {
   trip_id: string
@@ -33,7 +34,6 @@ export default function TripInvitationPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
-  const supabase = createBrowserClient()
   const { toast } = useToast()
   const tripId = params.id as string
 

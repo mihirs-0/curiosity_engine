@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/context/auth-context"
-import { createBrowserClient } from "@/lib/supabase"
 import { Loader2, Calendar, Users, MessageSquare, Bookmark, ArrowLeft, Sparkles, User, Zap } from "lucide-react"
 import Link from "next/link"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -24,6 +23,7 @@ import type { QueryResponse } from "@/lib/api-client"
 import TripChat from "@/src/features/chat/TripChat"
 import FinalizeModal from "@/src/features/itinerary/FinalizeModal"
 import TripSidebar from "@/src/features/chat/TripSidebar"
+import { supabase } from "@/lib/supabase"
 
 interface Trip {
   trip_id: string
@@ -119,7 +119,6 @@ export default function TripDashboardPage() {
   const router = useRouter()
   const id = params.id as string
   const { user } = useAuth()
-  const supabase = createBrowserClient()
   const { toast } = useToast()
 
   // Use real query data instead of mock data

@@ -7,7 +7,7 @@ import { useAuth } from "@/context/auth-context"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import BookmarksDrawer from "@/components/bookmarks-drawer"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 
 export default function AppLayout(props: { children: React.ReactNode }) {
@@ -16,7 +16,6 @@ export default function AppLayout(props: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [bookmarks, setBookmarks] = useState<Array<{ title: string; url: string; description?: string }>>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const supabase = createBrowserClient()
   const { toast } = useToast()
 
   // Load bookmarks from Supabase if user is logged in, otherwise from localStorage

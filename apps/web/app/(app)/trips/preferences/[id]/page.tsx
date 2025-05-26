@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/components/ui/use-toast"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"   
 import { useAuth } from "@/context/auth-context"
 import { Loader2 } from "lucide-react"
 import { useQuery, useApi } from "@/hooks/use-api"
@@ -20,7 +20,6 @@ export default function TripPreferencesPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
-  const supabase = createBrowserClient()
   const id = params.id as string
   
   // Use real query data instead of mock data
@@ -107,7 +106,7 @@ export default function TripPreferencesPage() {
         status: "active",
         user_id: user?.id || "guest",
       }
-
+/*
       if (user) {
         // Save to Supabase
         const { error } = await supabase.from("trips").insert(tripPreferences)
@@ -122,6 +121,12 @@ export default function TripPreferencesPage() {
         savedTrips.push(tripPreferences)
         localStorage.setItem("driftboard-trips", JSON.stringify(savedTrips))
       }
+      */
+      const { error } = await supabase
+         .from("trips")
+         .insert({ ...tripPreferences, user_id: user?.id ?? "demo-user" })
+
+      if (error) throw error
 
       toast({
         title: "Trip finalized!",

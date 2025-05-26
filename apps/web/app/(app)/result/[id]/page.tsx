@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Bookmark, ExternalLink, Loader2, ArrowLeft } from 'lucide-react'
 import Link from "next/link"
 import { useAuth } from "@/context/auth-context"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 import { useQuery } from "@/hooks/use-api"
 import type { QueryResponse } from "@/lib/api-client"
@@ -78,7 +78,6 @@ export default function ResultPage() {
   const [bookmarks, setBookmarks] = useState<Array<{ title: string; url: string; description?: string }>>([])
   const [bookmarkedLinks, setBookmarkedLinks] = useState<Set<string>>(new Set())
   const { user } = useAuth()
-  const supabase = createBrowserClient()
   const { toast } = useToast()
   
   // Use the real API hook instead of mock data
@@ -101,13 +100,13 @@ export default function ResultPage() {
 
         if (data) {
           setBookmarks(
-            data.map((bookmark) => ({
+            data.map((bookmark: any) => ({
               title: bookmark.title,
               url: bookmark.url,
               description: bookmark.description,
             })),
           )
-          setBookmarkedLinks(new Set(data.map((bookmark) => bookmark.url)))
+          setBookmarkedLinks(new Set(data.map((bookmark: any) => bookmark.url)))
         }
       } else {
         // Fetch from localStorage for non-authenticated users

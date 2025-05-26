@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2, Share2, Check, X, Mail } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 interface ShareTripDialogProps {
   tripId: string
@@ -47,7 +47,6 @@ export default function ShareTripDialog({ tripId, tripTitle }: ShareTripDialogPr
     },
   ])
   const { toast } = useToast()
-  const supabase = createBrowserClient()
 
   const handleShareTrip = async (e: React.FormEvent) => {
     e.preventDefault()

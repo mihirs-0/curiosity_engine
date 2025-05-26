@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Loader2, Calendar, MapPin } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/context/auth-context"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase" 
 
 interface FinalizeModalProps {
   isOpen: boolean
@@ -49,7 +49,6 @@ export default function FinalizeModal({
 }: FinalizeModalProps) {
   const { user } = useAuth()
   const { toast } = useToast()
-  const supabase = createBrowserClient()
   
   const [title, setTitle] = useState("")
   const [days, setDays] = useState(7)

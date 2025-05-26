@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, MessageSquare, BookmarkCheck, Route } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useAuth } from "@/context/auth-context"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 interface Collaborator {
   id: string
@@ -49,7 +49,6 @@ export default function TripSidebar({
   onActivityClick,
 }: TripSidebarProps) {
   const { user } = useAuth()
-  const supabase = createBrowserClient()
   
   const [collaborators, setCollaborators] = useState<Collaborator[]>(initialCollaborators)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())

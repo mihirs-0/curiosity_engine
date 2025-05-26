@@ -4,25 +4,31 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
 import type { Session, User } from "@supabase/supabase-js"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
+
+
+//export type AuthContextType = { … }
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 type AuthContextType = {
   user: User | null
   session: Session | null
   isLoading: boolean
+  supabase: typeof supabase
   signUp: (email: string, password: string) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
+  
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+//const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider(props: { children: React.ReactNode }) {
   const { children } = props
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createBrowserClient()
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -85,7 +91,7 @@ export function AuthProvider(props: { children: React.ReactNode }) {
     signOut,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{...value, supabase}}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

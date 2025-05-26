@@ -35,6 +35,15 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Next.js
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
 # IDE
 .idea/
 .vscode/

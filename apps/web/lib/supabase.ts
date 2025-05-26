@@ -1,50 +1,35 @@
+// lib/supabase.ts
+import { createBrowserClient as createSupabaseBrowserClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
 
-// These environment variables are optional for local development
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+//
+// 1) Pull your two env-vars once (you've confirmed they exist).
+//
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Check if Supabase is properly configured (not just placeholder values)
-const isSupabaseConfigured = supabaseUrl && 
-  supabaseAnonKey && 
-  !supabaseUrl.includes('your_supabase') && 
-  !supabaseAnonKey.includes('your_supabase') &&
-  supabaseUrl.startsWith('https://')
-
-// Create a single supabase client for the browser
-export const createBrowserClient = () => {
-  if (!isSupabaseConfigured) {
-    console.warn("⚠️ Supabase environment variables not set or contain placeholder values - authentication will not work")
-    // Return a mock client that won't cause errors
-    return createClient("https://dummy.supabase.co", "dummy-key")
-  }
-  return createClient(supabaseUrl, supabaseAnonKey)
+//
+// 2) Create exactly one Supabase client for the entire frontend.
+//    We turn on `persistSession` so auth carries across reloads.
+//
+export function createBrowserClient() {
+  return createSupabaseBrowserClient(url, key)
 }
 
-// For server components
-export const createServerClient = () => {
-  const serverUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serverKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
-  
-  const isServerConfigured = serverUrl && 
-    serverKey && 
-    !serverUrl.includes('your_supabase') && 
-    !serverKey.includes('your_supabase') &&
-    serverUrl.startsWith('https://')
-  
-  if (!isServerConfigured) {
-    console.warn("⚠️ Supabase environment variables not set or contain placeholder values - authentication will not work")
-    // Return a mock client that won't cause errors
-    return createClient("https://dummy.supabase.co", "dummy-key", {
-      auth: {
-        persistSession: false,
-      },
-    })
-  }
-  
-  return createClient(serverUrl, serverKey, {
-    auth: {
-      persistSession: false,
-    },
+export const supabase = createClient(url, key, {
+  auth: { persistSession: true },
+})
+
+//
+// 3) Sanity-check on startup: log whatever session we find.
+//    (You can remove this once you've verified it works.)
+//
+supabase
+  .auth
+  .getSession()
+  .then(({ data: { session } }) => {
+    console.log("[supabase] session on load:", session)
   })
-}
+  .catch((err) => {
+    console.warn("[supabase] getSession error:", err)
+  })
