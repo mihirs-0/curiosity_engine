@@ -81,73 +81,91 @@ export default function TripPreferencesPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
+    e.preventDefault();
+    setIsLoading(true);
+  
     try {
-      // Generate personalized itinerary with Sonar
+      /* ─────────────────────────────────────────────────────────────
+         1)  Generate the personalized Sonar result (creates a QUERY)
+      ───────────────────────────────────────────────────────────── */
       toast({
-        title: "Generating your personalized itinerary...",
-        description: "Our AI is creating a custom trip plan based on your preferences.",
-      })
+        title: "Generating your personalized itinerary…",
+        description:
+          "Our AI is creating a custom trip plan based on your preferences.",
+      });
+  
+      const personalizedItineraryQuery = await generatePersonalizedItinerary();
+      if (!personalizedItineraryQuery) throw new Error("AI generation failed");
+  
+/* -------------------------------------------------
+   Build an explicit payload that matches the table
+-------------------------------------------------- */
+const tripPayload = {
+  title:            queryData?.raw_query ?? "Custom trip",
+  original_query_id: id,                  // FK → queries.id
+  luxury_level:      luxuryLevel,         // ✅ snake-case
+  travel_with:       travelWith,          // ✅ snake-case
+  interests:         interests,           // text[]
+  status:            "active",
+  user_id:           user?.id ?? "demo-user",
+  /* personalised_itinerary_id will be patched later */
+};
 
-      const personalizedItinerary = await generatePersonalizedItinerary()
+/* -------------------------------------------------
+   1️⃣  Insert TRIP  (do NOT supply trip_id/created_at)
+-------------------------------------------------- */
+const { data: trip, error: tripError } = await supabase
+  .from("trips")
+  .insert(tripPayload)
+  .select()        // so we get the generated trip_id back
+  .single();
 
-      // Prepare trip data
-      const tripPreferences = {
-        trip_id: id,
-        title: queryData?.raw_query || "Custom Trip",
-        original_query_id: id,
-        luxury_level: luxuryLevel,
-        travel_with: travelWith,
-        interests,
-        personalized_itinerary_id: personalizedItinerary?.id || null,
-        created_at: new Date().toISOString(),
-        status: "active",
-        user_id: user?.id || "guest",
-      }
-/*
-      if (user) {
-        // Save to Supabase
-        const { error } = await supabase.from("trips").insert(tripPreferences)
+if (tripError) throw tripError;
 
-        if (error) throw error
-      } else {
-        // Save to localStorage
-        const savedTrips = localStorage.getItem("driftboard-trips")
-          ? JSON.parse(localStorage.getItem("driftboard-trips") || "[]")
-          : []
+/* -------------------------------------------------
+   2️⃣  Insert ITINERARY  (now that trip_id exists)
+-------------------------------------------------- */
+const { data: itinerary, error: itinError } = await supabase
+  .from("itineraries")
+  .insert({
+    trip_id:   trip.trip_id,                 // FK satisfied
+    query_id:  personalizedItineraryQuery.id,
+    sonar_json: personalizedItineraryQuery.sonar_data,
+    theme: luxuryLevel,
+  })
+  .select()
+  .single();
 
-        savedTrips.push(tripPreferences)
-        localStorage.setItem("driftboard-trips", JSON.stringify(savedTrips))
-      }
-      */
-      const { error } = await supabase
-         .from("trips")
-         .insert({ ...tripPreferences, user_id: user?.id ?? "demo-user" })
+if (itinError) throw itinError;
 
-      if (error) throw error
+/* -------------------------------------------------
+   3️⃣  Patch TRIP so it points to new itinerary
+-------------------------------------------------- */
+const { error: patchError } = await supabase
+  .from("trips")
+  .update({ personalized_itinerary_id: itinerary.id })
+  .eq("trip_id", trip.trip_id);
 
+if (patchError) throw patchError;
+  
+      /* ───────────────────────────────────────────────────────────── */
       toast({
-        title: "Trip finalized!",
-        description: personalizedItinerary 
-          ? "Your personalized itinerary has been generated and your trip is ready!"
-          : "Your trip preferences have been saved and your trip is ready for planning.",
-      })
-
-      // Redirect to trip dashboard
-      router.push(`/trips/${id}`)
+        title: "Trip finalised! ✨",
+        description:
+          "Your personalised itinerary has been saved – time to start planning!",
+      });
+  
+      router.push(`/trips/${trip.trip_id}`);
     } catch (error: any) {
       toast({
-        title: "Error finalizing trip",
+        title: "Error finalising trip",
         description: error.message || "An unexpected error occurred.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-
+  };
   if (loadingQuery) {
     return (
       <div className="container mx-auto px-4 py-12 flex items-center justify-center min-h-[60vh]">
