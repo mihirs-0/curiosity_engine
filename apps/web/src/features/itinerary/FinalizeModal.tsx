@@ -38,6 +38,8 @@ interface GeneratedItinerary {
   }>
 }
 
+
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
 
 export default function FinalizeModal({
@@ -53,19 +55,18 @@ export default function FinalizeModal({
   const [title, setTitle] = useState("")
   const [days, setDays] = useState(7)
   const [isGenerating, setIsGenerating] = useState(false)
-
   // Get authentication headers
   const getAuthHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession()
-    
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` })
     }
 
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`
-    }
-
+    console.log("getAuthHeaders → session:", session)
+    console.log("getAuthHeaders → headers:", headers)
     return headers
   }
 
@@ -93,8 +94,9 @@ export default function FinalizeModal({
     try {
       // Get auth headers
       const headers = await getAuthHeaders()
-      
+      console.log("handleGenerate → headers:", headers)
       // Call the finalize API endpoint
+      
       const response = await fetch(`${API_BASE_URL}/trips/${tripId}/finalize`, {
         method: "POST",
         headers,
@@ -103,29 +105,41 @@ export default function FinalizeModal({
           days: days,
         }),
       })
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-
       const generatedItinerary: GeneratedItinerary = await response.json()
-
       // Store the itinerary in the trip record
       if (user) {
         // Update Supabase record
+      /*
         const { error } = await supabase
-          .from("trips")
-          .update({ 
-            itinerary: generatedItinerary,
-            updated_at: new Date().toISOString()
-          })
-          .eq("trip_id", tripId)
-          .eq("user_id", user.id)
-
-        if (error) {
-          console.error("Error updating trip:", error)
-          // Continue anyway since the itinerary was generated successfully
-        }
+             .from("itineraries")
+             .insert({
+             trip_id: tripId,
+             // query_id can be null unless you care to link it
+             query_id: null,
+             // store a theme if you have one in UI; otherwise omit (Postgres will accept null)
+             theme: null,
+             sonar_json: generatedItinerary       // JS object → jsonb handled automatically
+           })
+             .select()   // optional: get the inserted row back
+             .single();
+        */
+             const { error: insertError } = await supabase
+             
+            .from("itineraries").insert({
+              trip_id: tripId,
+              // query_id can be null unless you care to link it
+              query_id: null,
+              // store a theme if you have one in UI; otherwise omit (Postgres will accept null)
+              theme: null,
+              sonar_json: generatedItinerary       // JS object → jsonb handled automatically
+              })
+             if (insertError) {
+               console.error("Error inserting itinerary:", insertError)
+             }
+      /*
       } else {
         // Update localStorage
         const savedTrips = localStorage.getItem("driftboard-trips")
@@ -139,7 +153,7 @@ export default function FinalizeModal({
           }
         }
       }
-
+      */
       // Pass the itinerary to parent component
       onItineraryGenerated(generatedItinerary)
 
@@ -152,7 +166,7 @@ export default function FinalizeModal({
       onClose()
       onNavigateToItinerary()
 
-    } catch (error) {
+    }} catch (error) {
       console.error("Error generating itinerary:", error)
       toast({
         title: "Generation Failed",

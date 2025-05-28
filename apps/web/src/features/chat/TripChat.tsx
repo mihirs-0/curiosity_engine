@@ -1,8 +1,13 @@
 "use client"
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import React, { useState, useRef, useEffect } from "react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -10,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2, Check } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/components/ui/use-toast"
-import { createBrowserClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 interface Message {
   id: string
@@ -34,60 +39,100 @@ interface TripChatProps {
   initialMessages?: Message[]
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-
+const API_BASE_URL = "http://localhost:8000"
+//process.env.NEXT_PUBLIC_BACKEND_URL || 
 export default function TripChat({ tripId, initialMessages = [] }: TripChatProps) {
   const { user } = useAuth()
   const { toast } = useToast()
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const supabase = createBrowserClient()
-  
+
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [newMessage, setNewMessage] = useState("")
   const [sendingMessage, setSendingMessage] = useState(false)
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
 
-  // Scroll to bottom when messages change
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [messages])
+    let mounted = true
 
-  // Get authentication headers
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    
+    // Load chat history
+    ;(async () => {
+      const { data, error } = await supabase
+        .from("chat_message")
+        .select("id, user_id, role, content, created_at")
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: true })
+
+      if (error || !mounted || !data) return
+
+      setMessages(
+        data.map((row) => ({
+          id: String(row.id),
+          content: row.content,
+          sender: { id: row.user_id, name: row.user_id, avatar: undefined },
+          timestamp: row.created_at,
+          role: row.role,
+        }))
+      )
+    })()
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel(`chat_message_trip_${tripId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_message",
+          filter: `trip_id=eq.${tripId}`,
+        },
+        ({ new: row }) => {
+          if (!mounted) return
+          const newMsg: Message = {
+            id: String(row.id),
+            content: row.content,
+            sender: { id: row.user_id, name: row.user_id, avatar: undefined },
+            timestamp: row.created_at,
+            role: row.role as "user" | "assistant",
+          }
+          setMessages((prev) => [...prev, newMsg])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      mounted = false
+      supabase.removeChannel(channel)
+    }
+  }, [tripId])
+
+  // Prepare auth headers for backend
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     }
-
     if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`
+      headers["Authorization"] = `Bearer ${session.access_token}`
     }
-
     return headers
   }
 
-  // Parse suggestions from assistant message content
   const parseSuggestions = (content: string) => {
-    const suggestions: Array<{suggestion: string, day?: number, tags?: string[]}> = []
+    const suggestions: Array<{ suggestion: string; day?: number; tags?: string[] }> = []
     const jsonRegex = /\{[^}]*"suggestion"[^}]*\}/g
     const matches = content.match(jsonRegex)
-    
-    if (matches) {
-      matches.forEach(match => {
-        try {
-          const parsed = JSON.parse(match)
-          if (parsed.suggestion) {
-            suggestions.push(parsed)
-          }
-        } catch (e) {
-          // Ignore malformed JSON
-        }
-      })
-    }
-    
+    matches?.forEach((match) => {
+      try {
+        const parsed = JSON.parse(match)
+        if (parsed.suggestion) suggestions.push(parsed)
+      } catch {
+        // ignore invalid JSON
+      }
+    })
     return suggestions
   }
 
@@ -96,8 +141,6 @@ export default function TripChat({ tripId, initialMessages = [] }: TripChatProps
     if (!newMessage.trim() || sendingMessage) return
 
     setSendingMessage(true)
-
-    // Add user message immediately
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       content: newMessage,
@@ -109,110 +152,80 @@ export default function TripChat({ tripId, initialMessages = [] }: TripChatProps
       timestamp: new Date().toISOString(),
       role: "user",
     }
-
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage])
     setNewMessage("")
 
     try {
-      // Get auth headers
       const headers = await getAuthHeaders()
-      
-      // Call the real API endpoint
-      const response = await fetch(`${API_BASE_URL}/trips/${tripId}/chat`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ content: newMessage }),
-      })
+      console.log("📡 POST to", `/trips/${tripId}/chat`)
+
+      const response = await fetch(
+        `${API_BASE_URL}/trips/${tripId}/chat`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ content: newMessage }),
+        }
+      )
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorText = await response.text()
+        console.error("❌ Error", response.status, errorText)
+        throw new Error(`HTTP ${response.status}`)
       }
 
       const data = await response.json()
-      
-      // Parse suggestions from the assistant response
+      console.log("✅ Received", data)
+
       const suggestions = parseSuggestions(data.assistant.content)
-      
-      // Add assistant message
       const assistantMessage: Message = {
         id: `assistant-${data.assistant.id}`,
         content: data.assistant.content,
-        sender: {
-          id: "assistant",
-          name: "Trip Assistant",
-        },
+        sender: { id: "assistant", name: "Trip Assistant" },
         timestamp: data.assistant.created_at || new Date().toISOString(),
         role: "assistant",
         suggestions,
       }
-
-      setMessages(prev => [...prev, assistantMessage])
-      
+      setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
-      console.error("Error sending message:", error)
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      })
-      
-      // Add error message
-      const errorMessage: Message = {
+      console.error("🚨 Send failed", error)
+      toast({ title: "Error", description: "Failed to send message.", variant: "destructive" })
+      const errorMsg: Message = {
         id: `error-${Date.now()}`,
-        content: "Sorry, I encountered an error. Please try again.",
-        sender: {
-          id: "assistant",
-          name: "Trip Assistant",
-        },
+        content: "Sorry, something went wrong.",
+        sender: { id: "assistant", name: "Trip Assistant" },
         timestamp: new Date().toISOString(),
         role: "assistant",
       }
-      
-      setMessages(prev => [...prev, errorMessage])
+      setMessages((prev) => [...prev, errorMsg])
     } finally {
       setSendingMessage(false)
     }
   }
 
-  const handleAddToTrip = async (messageId: string, suggestion: any) => {
-    const suggestionKey = `${messageId}-${suggestion.suggestion}`
-    
-    if (selectedSuggestions.has(suggestionKey)) {
-      return // Already selected
-    }
+  const handleAddToTrip = async (
+    messageId: string,
+    suggestion: { suggestion: string }
+  ) => {
+    const key = `${messageId}-${suggestion.suggestion}`
+    if (selectedSuggestions.has(key)) return
 
     try {
-      // Get auth headers
       const headers = await getAuthHeaders()
-      
-      const response = await fetch(`${API_BASE_URL}/trips/${tripId}/chat/select`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          message_id: messageId,
-          payload: suggestion,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      // Mark as selected
-      setSelectedSuggestions(prev => new Set([...prev, suggestionKey]))
-      
-      toast({
-        title: "Added to Trip",
-        description: "Suggestion added to your itinerary!",
-      })
-      
-    } catch (error) {
-      console.error("Error adding to trip:", error)
-      toast({
-        title: "Error",
-        description: "Failed to add suggestion to trip. Please try again.",
-        variant: "destructive",
-      })
+      const resp = await fetch(
+        `${API_BASE_URL}/trips/${tripId}/chat/select`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ message_id: messageId, context: suggestion }),
+        }
+      )
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+      setSelectedSuggestions((prev) => new Set(prev).add(key))
+      toast({ title: "Added to Trip", description: "Suggestion saved!" })
+    } catch (err) {
+      console.error("Add failed", err)
+      toast({ title: "Error", description: "Could not add suggestion.", variant: "destructive" })
     }
   }
 
@@ -368,3 +381,11 @@ export default function TripChat({ tripId, initialMessages = [] }: TripChatProps
     </Card>
   )
 } 
+
+function getAuthHeaders() {
+  throw new Error("Function not implemented.")
+}
+function setSelectedSuggestions(arg0: (prev: any) => Set<any>) {
+  throw new Error("Function not implemented.")
+}
+

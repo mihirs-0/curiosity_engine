@@ -54,8 +54,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Next.js dev server
-        "chrome-extension://*",    # Chrome extension
-        os.getenv("FRONTEND_URL", "http://localhost:3000")  # Production frontend URL
+        "http://localhost:3000/trips",  # Next.js dev server
+        #"chrome-extension://*",    # Chrome extension
+        #os.getenv("FRONTEND_URL", "http://localhost:3000")  # Production frontend URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
