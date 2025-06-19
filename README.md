@@ -4,7 +4,7 @@
 
 A full-stack AI application that transforms travel planning through **Large Language Models**, **personalized recommendation systems**, and **semantic search**. Originally built for the Perplexity Hackathon, this project demonstrates end-to-end ML system design from data ingestion to user-facing recommendations.
 
-## 🧠 What I Learned & Built
+##  What I Learned & Built
 
 ### **Machine Learning & AI Systems**
 - **Large Language Model Integration**: Implemented production-ready LLM pipelines using Perplexity's Sonar API with structured output generation and JSON schema enforcement
@@ -56,7 +56,7 @@ A full-stack AI application that transforms travel planning through **Large Lang
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-## 🚀 Key Features Demonstrating ML/AI Capabilities
+## Key Features
 
 ### **Personalized Recommendation Engine**
 - **Multi-factor Personalization**: Combines luxury level, travel style, group composition, and interests
