@@ -42,26 +42,19 @@ async def finalize_itinerary(
         '{"title":str,"days":[{"day":1,"summary":str,"morning":str,'
         '"afternoon":str,"evening":str,"notes":[str]}]}'
     )
-    raw_json, usage = call_sonar(
-        [{"role":"user","content":prompt}],
-        system_prompt="Return JSON only.",
-        model="sonar-small-online",
-        max_tokens=512,
-        response_format="json_object",
-    )
-    itinerary_json = json.loads(raw_json)
-    try:
-        itinerary_json, _ = call_sonar(
-        [{"role": "user", "content": prompt}],
-        system_prompt="Return JSON only.",
-        response_format="json_object"
-    )
     
+    try:
+        raw_json, usage = call_sonar(
+            "Return JSON only.",  # system_prompt (first parameter)
+            [{"role": "user", "content": prompt}],  # messages (second parameter)
+            model="sonar-small-online",
+            max_tokens=512,
+            response_format={"type": "json_object"},  # correct format as dict
+        )
+        itinerary_json = json.loads(raw_json)
     except HTTPException as e:
         print("❌ Sonar timeout or error:", e.detail)
         raise HTTPException(status_code=500, detail="Itinerary generation failed due to Sonar timeout.")
-
-    return json.loads(itinerary_json)
 
     # 3️⃣  save to `itineraries`
     insert = (

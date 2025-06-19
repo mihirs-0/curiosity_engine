@@ -91,72 +91,90 @@ export default function FinalizeModal({
 
     setIsGenerating(true)
 
-    try {
+        try {
       // Get auth headers
       const headers = await getAuthHeaders()
       console.log("handleGenerate → headers:", headers)
-      // Call the finalize API endpoint
-      const response = await fetch(`${API_BASE_URL}/trips/${tripId}/finalize`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          title: title.trim(),
-          days: days,
-        }),
-      })
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      
+      // First check if there are any suggestions selected for this trip
+      const { data: choicesData, error: choicesError } = await supabase
+        .from("itinerary_choice")
+        .select("payload")
+        .eq("trip_id", tripId)
+      
+      if (choicesError) {
+        console.error("Error checking suggestions:", choicesError)
       }
-      const generatedItinerary: GeneratedItinerary = await response.json()
+      
+      const hasSelectedSuggestions = choicesData && choicesData.length > 0
+      let generatedItinerary: GeneratedItinerary
+      
+      if (!hasSelectedSuggestions) {
+        // If no suggestions are selected, create a basic itinerary based on trip info
+        // Get trip details for context
+        const { data: tripData, error: tripError } = await supabase
+          .from("trips")
+          .select("title, luxury_level, travel_with, interests, original_query_id")
+          .eq("trip_id", tripId)
+          .single()
+          
+        if (tripError) {
+          throw new Error("Failed to fetch trip details")
+        }
+        
+        // Create a basic itinerary structure
+        generatedItinerary = {
+          title: title.trim(),
+          days: Array.from({ length: days }, (_, index) => ({
+            day: index + 1,
+            summary: `Day ${index + 1} of your ${tripData?.title || 'trip'}`,
+            morning: "Morning activities to be planned",
+            afternoon: "Afternoon activities to be planned", 
+            evening: "Evening activities to be planned",
+            notes: [
+              `${tripData?.luxury_level} style accommodations`,
+              `Suitable for ${tripData?.travel_with}`,
+              ...(tripData?.interests || []).map((interest: string) => `${interest} activities`)
+            ]
+          }))
+        }
+        
+        // Store directly without calling the backend finalize endpoint
+        const { error: insertError } = await supabase
+          .from("itineraries")
+          .insert({
+            query_id: null,
+            theme: tripData?.luxury_level || 'moderate',
+            sonar_json: generatedItinerary
+          })
+        
+        if (insertError) {
+          console.error("Error inserting itinerary:", insertError)
+          throw new Error(`Failed to save itinerary: ${JSON.stringify(insertError)}`)
+        }
+      } else {
+        // If suggestions exist, use the finalize endpoint
+        const response = await fetch(`${API_BASE_URL}/trips/${tripId}/finalize`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            title: title.trim(),
+            days: days,
+          }),
+        })
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`HTTP error! status: ${response.status}: ${errorText}`)
+        }
+        
+        generatedItinerary = await response.json()
+      }
 
       if (!generatedItinerary?.days || !Array.isArray(generatedItinerary.days)) {
         throw new Error("Itinerary generation failed.");
       }
-      // Store the itinerary in the trip record
-      if (user) {
-        // Update Supabase record
-      /*
-        const { error } = await supabase
-             .from("itineraries")
-             .insert({
-             trip_id: tripId,
-             // query_id can be null unless you care to link it
-             query_id: null,
-             // store a theme if you have one in UI; otherwise omit (Postgres will accept null)
-             theme: null,
-             sonar_json: generatedItinerary       // JS object → jsonb handled automatically
-           })
-             .select()   // optional: get the inserted row back
-             .single();
-        */
-             const { error: insertError } = await supabase
-             
-            .from("itineraries").insert({
-              trip_id: tripId,
-              // query_id can be null unless you care to link it
-              query_id: null,
-              // store a theme if you have one in UI; otherwise omit (Postgres will accept null)
-              theme: null,
-              sonar_json: generatedItinerary       // JS object → jsonb handled automatically
-              })
-             if (insertError) {
-               console.error("Error inserting itinerary:", insertError)
-             }
-      /*
-      } else {
-        // Update localStorage
-        const savedTrips = localStorage.getItem("driftboard-trips")
-        if (savedTrips) {
-          const trips = JSON.parse(savedTrips)
-          const tripIndex = trips.findIndex((t: any) => t.trip_id === tripId)
-          if (tripIndex !== -1) {
-            trips[tripIndex].itinerary = generatedItinerary
-            trips[tripIndex].updated_at = new Date().toISOString()
-            localStorage.setItem("driftboard-trips", JSON.stringify(trips))
-          }
-        }
-      }
-      */
+
       // Pass the itinerary to parent component
       onItineraryGenerated(generatedItinerary)
 
@@ -169,7 +187,7 @@ export default function FinalizeModal({
       onClose()
       onNavigateToItinerary()
 
-    }} catch (error) {
+    } catch (error) {
       console.error("Error generating itinerary:", error)
       toast({
         title: "Generation Failed",

@@ -9,7 +9,7 @@ export { API_BASE_URL }
 //
 // 2) Simple dev-mode guard (optional)
 //
-const isDev = process.env.NODE_ENV === "development"
+//const isDev = process.env.NODE_ENV === "development"
 
 //
 // 3) Types
@@ -38,10 +38,10 @@ class ApiClient {
       "Content-Type": "application/json",
     }
 
-    if (isDev) {
-      console.log("🔧 Dev mode: skipping Supabase auth headers")
-      return headers
-    }
+    //if (isDev) {
+    //  console.log("🔧 Dev mode: skipping Supabase auth headers")
+    //  return headers
+    //}
 
     try {
       const {

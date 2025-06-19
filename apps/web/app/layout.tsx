@@ -5,7 +5,10 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/context/auth-context"
 import { Toaster } from "@/components/ui/toaster"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter",
+})
 
 // Properly load Playfair Display using Next.js font system
 const playfair = Playfair_Display({
@@ -23,8 +26,8 @@ export const metadata = {
 export default function RootLayout(props: { children: React.ReactNode }) {
   const { children } = props
   return (
-    <html lang="en" className={`${playfair.variable} light`} suppressHydrationWarning data-theme="light">
-      <body className={`${inter.className} light`} data-theme="light">
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`} suppressHydrationWarning data-theme="light">
+      <body className="font-sans" data-theme="light">
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
             {children}
