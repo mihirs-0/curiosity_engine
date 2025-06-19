@@ -96,7 +96,6 @@ export default function FinalizeModal({
       const headers = await getAuthHeaders()
       console.log("handleGenerate → headers:", headers)
       // Call the finalize API endpoint
-      
       const response = await fetch(`${API_BASE_URL}/trips/${tripId}/finalize`, {
         method: "POST",
         headers,
@@ -109,6 +108,10 @@ export default function FinalizeModal({
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const generatedItinerary: GeneratedItinerary = await response.json()
+
+      if (!generatedItinerary?.days || !Array.isArray(generatedItinerary.days)) {
+        throw new Error("Itinerary generation failed.");
+      }
       // Store the itinerary in the trip record
       if (user) {
         // Update Supabase record

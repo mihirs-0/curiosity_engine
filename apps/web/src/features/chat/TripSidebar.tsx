@@ -59,13 +59,13 @@ export default function TripSidebar({
 
     // Subscribe to chat messages for typing indicators
     const channel = supabase
-      .channel(`chat_messages_${tripId}`)
+      .channel(`chat_message_${tripId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'chat_messages',
+          table: 'chat_message',
           filter: `trip_id=eq.${tripId}`,
         },
         (payload) => {

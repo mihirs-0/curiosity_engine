@@ -276,13 +276,23 @@ export default function TripDashboardPage() {
       {/* — Tabs */}
       <div className="max-w-6xl mx-auto grid lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="bg-amber-50 p-1 rounded">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="chat">Chat</TabsTrigger>
-              <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
-              <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
-            </TabsList>
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => {
+          // guard against any unexpected string
+          if (["overview", "chat", "bookmarks", "itinerary"].includes(val)) {
+              setActiveTab(
+              val as "overview" | "chat" | "bookmarks" | "itinerary"
+            );
+          }
+        }}
+        className="space-y-6">
+      <TabsList className="bg-amber-50 p-1 rounded">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="chat">Chat</TabsTrigger>
+        <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>
+        <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
+      </TabsList>
 
             {/* Overview */}
             <TabsContent value="overview">
@@ -321,7 +331,9 @@ export default function TripDashboardPage() {
 
             {/* Chat */}
             <TabsContent value="chat">
-              <TripChat tripId={trip.trip_id} initialMessages={messages} />
+              <React.Suspense fallback={<div>Loading chat...</div>}>
+                <TripChat tripId={trip.trip_id} initialMessages={messages} />
+              </React.Suspense>
             </TabsContent>
 
             {/* Bookmarks */}

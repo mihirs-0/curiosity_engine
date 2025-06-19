@@ -9,64 +9,78 @@ import httpx
 from fastapi import HTTPException
 from fastapi import APIRouter, Depends, Body, Path
 
-router = APIRouter(prefix="http://localhost:8000/trips/{trip_id}/finalize", tags=["itinerary"])
+router = APIRouter(prefix="/trips/{trip_id}/finalize", tags=["itinerary"])
 
 @router.post("")
-async def finalize(trip_id: str=Path(..., description="The ID of the trip"),
-                   body: dict=Body(..., description="The message to send"),
-                   user=Depends(get_required_user),
-                   supabase: Client = Depends(get_supabase)):
-
-    # 1. Fetch all itinerary rows for the given trip
-    result = supabase.table("itineraries")\
-        .select("sonar_json")\
-        .eq("trip_id", trip_id)\
+async def finalize_itinerary(
+    trip_id: str = Path(...),
+    body: dict = Body(...),          # expects { title:str, days:int }
+    user = Depends(get_required_user),
+    supabase: Client = Depends(get_supabase),
+):
+    # 1️⃣  gather user-confirmed suggestions
+    rows = (
+        supabase.table("itinerary_choice")
+        .select("payload")
+        .eq("trip_id", trip_id)
         .execute()
-
-    if not result.data:
-        raise HTTPException(status_code=404, detail="No itinerary suggestions found for this trip")
-
-    # 2. Extract all suggestions from sonar_json
-    suggestions = []
-    for row in result.data:
-        json_blob = row.get("sonar_json", {})
-        if isinstance(json_blob, str):
-            try:
-                json_blob = json.loads(json_blob)
-            except Exception:
-                continue
-        # Expecting the "suggestion" field inside the JSON blob
-        if "suggestion" in json_blob:
-            suggestions.append(json_blob["suggestion"])
-
+        .data
+    )
+    suggestions = [
+        r["payload"].get("suggestion")
+        for r in rows
+        if r.get("payload")
+    ]
     if not suggestions:
-        raise HTTPException(status_code=400, detail="No valid suggestions found in itinerary rows")
+        raise HTTPException(400, "No suggestions have been added yet.")
 
-    # 3. Build prompt
-    user_prompt = (
-        f"Here are all confirmed ideas:\n{suggestions}\n"
-        f"Please craft a coherent {body['days']}-day plan named "
-        f"\"{body['title']}\". Respond ONLY with valid JSON matching:\n"
-        """{
-          "title": str,
-          "days": [
-            { "day": 1, "summary": str, "morning": str,
-              "afternoon": str, "evening": str, "notes": [str] }
-          ]
-        }"""
+    # 2️⃣  build prompt & call Sonar (small / cheap)
+    prompt = (
+        f"Here are confirmed ideas:\n{json.dumps(suggestions, indent=2)}\n\n"
+        f"Craft a {body['days']}-day itinerary titled \"{body['title']}\".\n"
+        "Return *only* JSON matching:\n"
+        '{"title":str,"days":[{"day":1,"summary":str,"morning":str,'
+        '"afternoon":str,"evening":str,"notes":[str]}]}'
     )
-
-    # 4. Send to Sonar
-    system = (
-        "Return JSON only. Do *not* include <think> or extra text. "
-        "Use sonar-deep-research for exhaustive, cited planning."
+    raw_json, usage = call_sonar(
+        [{"role":"user","content":prompt}],
+        system_prompt="Return JSON only.",
+        model="sonar-small-online",
+        max_tokens=512,
+        response_format="json_object",
     )
-
-    itinerary_json, _ = call_sonar(
-        [{"role": "user", "content": user_prompt}],
-        system_prompt=system,
+    itinerary_json = json.loads(raw_json)
+    try:
+        itinerary_json, _ = call_sonar(
+        [{"role": "user", "content": prompt}],
+        system_prompt="Return JSON only.",
         response_format="json_object"
     )
+    
+    except HTTPException as e:
+        print("❌ Sonar timeout or error:", e.detail)
+        raise HTTPException(status_code=500, detail="Itinerary generation failed due to Sonar timeout.")
 
-    # 5. Return JSON
     return json.loads(itinerary_json)
+
+    # 3️⃣  save to `itineraries`
+    insert = (
+        supabase.table("itineraries")
+        .insert({
+            "trip_id": trip_id,
+            "query_id": None,
+            "theme": None,
+            "sonar_json": itinerary_json,
+        })
+        .select("id, sonar_json")
+        .single()
+        .execute()
+        .data
+    )
+
+    # 4️⃣  patch the trips row so later page loads know where to look
+    supabase.table("trips").update(
+        {"personalized_itinerary_id": insert["id"]}
+    ).eq("trip_id", trip_id).execute()
+
+    return {"itinerary": insert, "usage": usage}

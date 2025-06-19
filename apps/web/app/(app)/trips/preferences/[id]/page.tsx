@@ -14,6 +14,21 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/auth-context"
 import { Loader2 } from "lucide-react"
 import { useQuery, useApi } from "@/hooks/use-api"
+import { API_BASE_URL } from "@/lib/api-client"
+
+/* Grab a signed JWT so the FastAPI routes know who you are */
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return {
+    "Content-Type": "application/json",
+    ...(session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {}),
+  };
+};
 
 export default function TripPreferencesPage() {
   const params = useParams()
@@ -85,81 +100,45 @@ export default function TripPreferencesPage() {
     setIsLoading(true);
   
     try {
-      /* ─────────────────────────────────────────────────────────────
-         1)  Generate the personalized Sonar result (creates a QUERY)
-      ───────────────────────────────────────────────────────────── */
       toast({
-        title: "Generating your personalized itinerary…",
+        title: "Generating your personalised itinerary…",
         description:
           "Our AI is creating a custom trip plan based on your preferences.",
       });
   
-      const personalizedItineraryQuery = await generatePersonalizedItinerary();
-      if (!personalizedItineraryQuery) throw new Error("AI generation failed");
-  
-/* -------------------------------------------------
-   Build an explicit payload that matches the table
--------------------------------------------------- */
-const tripPayload = {
-  title:            queryData?.raw_query ?? "Custom trip",
-  original_query_id: id,                  // FK → queries.id
-  luxury_level:      luxuryLevel,         // ✅ snake-case
-  travel_with:       travelWith,          // ✅ snake-case
-  interests:         interests,           // text[]
-  status:            "active",
-  user_id:           user?.id ?? "demo-user",
-  /* personalised_itinerary_id will be patched later */
-};
-
-/* -------------------------------------------------
-   1️⃣  Insert TRIP  (do NOT supply trip_id/created_at)
--------------------------------------------------- */
-const { data: trip, error: tripError } = await supabase
-  .from("trips")
-  .insert(tripPayload)
-  .select()        // so we get the generated trip_id back
-  .single();
-
-if (tripError) throw tripError;
-
-/* -------------------------------------------------
-   2️⃣  Insert ITINERARY  (now that trip_id exists)
--------------------------------------------------- */
-const { data: itinerary, error: itinError } = await supabase
-  .from("itineraries")
-  .insert({
-    trip_id:   trip.trip_id,                 // FK satisfied
-    query_id:  personalizedItineraryQuery.id,
-    sonar_json: personalizedItineraryQuery.sonar_data,
-    theme: luxuryLevel,
-  })
-  .select()
-  .single();
-
-if (itinError) throw itinError;
-
-/* -------------------------------------------------
-   3️⃣  Patch TRIP so it points to new itinerary
--------------------------------------------------- */
-const { error: patchError } = await supabase
-  .from("trips")
-  .update({ personalized_itinerary_id: itinerary.id })
-  .eq("trip_id", trip.trip_id);
-
-if (patchError) throw patchError;
-  
-      /* ───────────────────────────────────────────────────────────── */
-      toast({
-        title: "Trip finalised! ✨",
-        description:
-          "Your personalised itinerary has been saved – time to start planning!",
+      /* 1️⃣ POST to the new backend route */
+      const headers = await getAuthHeaders();
+      const resp = await fetch(`${API_BASE_URL}/itineraries/generate`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          raw_query:      queryData?.raw_query,
+          luxury_level:   luxuryLevel,   // "budget" | "moderate" | "luxury"
+          travel_with:    travelWith,    // "solo" | "partner" | "family" | "friends"
+          interests,                     // string[]
+        }),
       });
   
-      router.push(`/trips/${trip.trip_id}`);
-    } catch (error: any) {
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${txt}`);
+      }
+  
+      /* 2️⃣ Backend returns trip_id (and itinerary_id, usage) */
+      const { trip_id } = await resp.json();
+  
       toast({
-        title: "Error finalising trip",
-        description: error.message || "An unexpected error occurred.",
+        title: "Trip created! ✨",
+        description: "Your personalised itinerary is ready – happy planning!",
+      });
+  
+      /* 3️⃣ Off we go to the new dashboard */
+      router.push(`/trips/${trip_id}`);
+    } catch (error: any) {
+      console.error("generate_itinerary failed:", error);
+      toast({
+        title: "Error creating trip",
+        description: error.message ?? "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {

@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase"
 // 1) Base URL of your FastAPI backend
 //
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
-
+export { API_BASE_URL }
 //
 // 2) Simple dev-mode guard (optional)
 //

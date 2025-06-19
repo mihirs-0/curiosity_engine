@@ -9,10 +9,12 @@ from typing import List, Optional
 from pydantic import BaseModel
 import uuid
 from datetime import datetime
-
+from fastapi.responses import JSONResponse
 # Import database and routers
 from .database import create_db_and_tables, get_supabase
 from .routers import chat, itinerary
+from .routers.auth import get_required_user
+from app.routers import generate_itinerary
 
 # Load environment variables
 load_dotenv()
@@ -51,21 +53,20 @@ app = FastAPI(title="Curiosity Engine API", version="1.0.0")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # Next.js dev server
-        "http://localhost:3000/trips",  # Next.js dev server
+    allow_origins=["*"],
+        #"http://localhost:3000",  # Next.js dev server
+        #"http://localhost:3000/trips",  # Next.js dev server
         #"chrome-extension://*",    # Chrome extension
         #os.getenv("FRONTEND_URL", "http://localhost:3000")  # Production frontend URL
-    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
+    )
 
 # Include routers
 app.include_router(chat.router)
 app.include_router(itinerary.router)
+app.include_router(generate_itinerary.router)
 
 @app.on_event("startup")
 def startup_event():
